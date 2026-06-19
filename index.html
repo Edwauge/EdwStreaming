@@ -4,10 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Edwauge.Vip - Streaming Panel</title>
-  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Iconos modernos FontAwesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
   <style>
     @keyframes subtle-pulse {
       0%, 100% { border-color: rgba(234, 179, 8, 0.3); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
@@ -20,7 +22,6 @@
 </head>
 <body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col font-sans select-none antialiased">
 
-  <!-- BARRA DE NAVEGACIÓN -->
   <header class="bg-white/90 backdrop-blur border-b border-gray-200 sticky top-0 z-40 shadow-sm">
     <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
       <div class="flex items-center space-x-2">
@@ -35,7 +36,6 @@
     </div>
   </header>
 
-  <!-- SELECCIÓN DE PAÍS -->
   <div class="bg-white border-b border-gray-200 sticky top-[69px] z-30 shadow-xs">
     <div class="max-w-3xl mx-auto flex justify-around">
       <button id="tab-CO" onclick="cambiarPais('CO')" class="flex-1 py-4 text-center font-bold text-sm sm:text-base border-b-2 border-yellow-500 text-yellow-600 transition-all">
@@ -50,11 +50,14 @@
     </div>
   </div>
 
-  <!-- CONTENIDO PRINCIPAL -->
   <main class="flex-grow max-w-7xl w-full mx-auto px-6 py-8">
     
-    <!-- VISTA ROLES -->
-    <div id="vista-seleccion-rol" class="max-w-md mx-auto my-16 bg-white border border-gray-200 rounded-3xl p-8 text-center shadow-xl">
+    <div id="loader-conexion" class="text-center my-16 font-bold text-gray-400 flex flex-col items-center justify-center gap-3">
+      <i class="fa-solid fa-spinner animate-spin text-3xl text-yellow-500"></i>
+      <span>Conectando con la base de datos en tiempo real...</span>
+    </div>
+
+    <div id="vista-seleccion-rol" class="max-w-md mx-auto my-16 bg-white border border-gray-200 rounded-3xl p-8 text-center shadow-xl hidden">
       <h3 class="text-lg font-bold mb-6 text-gray-700 tracking-tight">Selecciona tu tipo de perfil para continuar:</h3>
       <div class="space-y-3">
         <button onclick="seleccionarRol('cliente')" class="w-full bg-yellow-400/90 hover:bg-yellow-400 text-gray-900 font-extrabold py-4 rounded-2xl shadow-sm hover:shadow-md transition-all transform hover:-translate-y-0.5">
@@ -66,7 +69,6 @@
       </div>
     </div>
 
-    <!-- PANEL DE PRODUCTOS -->
     <div id="vista-tienda" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-8">
       <div class="lg:col-span-2 space-y-6">
         <div class="bg-white border border-gray-200 rounded-2xl p-4 flex justify-between items-center shadow-xs">
@@ -79,7 +81,6 @@
           </button>
         </div>
 
-        <!-- SECCIÓN OFERTA COMBO -->
         <div id="seccion-oferta-combo" class="bg-white border border-gray-200 oferta-animada rounded-3xl p-6 relative overflow-hidden hidden shadow-xs">
           <div class="absolute top-0 right-0 bg-yellow-400 text-gray-950 font-black text-[10px] px-4 py-1.5 rounded-bl-2xl tracking-wider uppercase">
             Súper Combo
@@ -91,7 +92,6 @@
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" id="slots-combo"></div>
         </div>
 
-        <!-- CATÁLOGO -->
         <div>
           <h3 class="text-base font-bold text-gray-500 mb-4 tracking-wide uppercase flex items-center gap-2">
             <i class="fa-solid fa-list-ul"></i> Servicios Disponibles
@@ -100,7 +100,6 @@
         </div>
       </div>
 
-      <!-- CARRITO -->
       <div class="lg:col-span-1">
         <div class="bg-white border border-gray-200 rounded-3xl p-6 sticky top-[170px] shadow-lg flex flex-col max-h-[72vh]">
           <h3 class="text-base font-black text-gray-800 mb-4 pb-2 border-b border-gray-100 flex items-center gap-2">
@@ -124,7 +123,6 @@
       </div>
     </div>
 
-    <!-- PANEL DE ADMINISTRACIÓN -->
     <div id="vista-admin" class="hidden bg-white border border-gray-200 rounded-3xl p-6 shadow-xl">
       <div class="flex justify-between items-center pb-4 border-b border-gray-100 mb-6">
         <h2 class="text-xl font-black text-gray-800 flex items-center gap-2">
@@ -185,7 +183,6 @@
         </div>
       </div>
 
-      <!-- AGREGAR / EDITAR -->
       <div class="bg-gray-50 border border-gray-200 rounded-2xl p-6 mb-6">
         <h3 class="text-sm font-bold text-gray-400 mb-4 uppercase tracking-wider flex items-center gap-2">
           <i class="fa-solid fa-plus text-yellow-600"></i> Registrar o Modificar Cuenta Streaming
@@ -245,7 +242,6 @@
         </div>
       </div>
 
-      <!-- TABLA -->
       <div>
         <h3 class="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider">Base de Datos de Cuentas</h3>
         <div class="overflow-x-auto border border-gray-200 rounded-2xl bg-white shadow-xs">
@@ -268,7 +264,6 @@
     </div>
   </main>
 
-  <!-- MODAL REVENDEDOR -->
   <div id="modal-pin-rol" class="fixed inset-0 bg-gray-900/40 backdrop-blur-xs hidden flex items-center justify-center p-4 z-50">
     <div class="bg-white border border-gray-200 rounded-3xl w-full max-w-sm p-6 shadow-2xl relative">
       <h3 class="text-base font-bold text-center text-gray-800 mb-2">Acceso Distribuidor <span id="modal-pin-rol-pais" class="text-yellow-600"></span></h3>
@@ -281,7 +276,6 @@
     </div>
   </div>
 
-  <!-- MODAL ADMIN -->
   <div id="modal-pin-admin" class="fixed inset-0 bg-gray-900/40 backdrop-blur-xs hidden flex items-center justify-center p-4 z-50">
     <div class="bg-white border border-gray-200 rounded-3xl w-full max-w-sm p-6 shadow-2xl relative">
       <h3 class="text-base font-bold text-center text-gray-800 mb-2"><i class="fa-solid fa-lock text-yellow-500 mr-2"></i>Área de Gerencia</h3>
@@ -295,7 +289,7 @@
   </div>
 
   <footer class="bg-white border-t border-gray-200 p-4 text-center text-xs text-gray-400 mt-12">
-    <p>&copy; 2026 Edwauge.Vip · Catálogo Profesional de Servicios Digitales.</p>
+    <p>&copy; 2026 Edwauge.Vip · Catálogo Profesional de Servicios Digitales en la Nube.</p>
   </footer>
 
   <script src="./script.js"></script>

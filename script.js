@@ -1,29 +1,52 @@
-const defaultPines = { admin: "3859", CO: "2233", MX: "3344", AR: "4455" };
-const defaultCombos = { CO: 35000, MX: 199, AR: 2500 };
-const defaultProductos = [
-  { nombre: "SPOTIFY PREMIUM - 1 Año Cuenta Nueva", categoria: "Spotify", pais: "CO", precioCliente: 45000, precioRevendedor: 38000, agotado: false },
-  { nombre: "Netflix - 1 Perfil UHD Premium (Mes)", categoria: "Netflix", pais: "CO", precioCliente: 15000, precioRevendedor: 11000, agotado: false },
-  { nombre: "Disney+ - 1 Perfil Estándar (Mes)", categoria: "Disney+", pais: "CO", precioCliente: 10000, precioRevendedor: 7500, agotado: false },
-  { nombre: "Netflix - 1 Perfil UHD Premium (Mes)", categoria: "Netflix", pais: "MX", precioCliente: 89, precioRevendedor: 65, agotado: false }
-];
+// CONFIGURACIÓN DE TU BASE DE DATOS EN LA NUBE
+const firebaseConfig = {
+  databaseURL: "https://console.firebase.google.com/u/0/project/edwstreaming-eba93/database/edwstreaming-eba93-default-rtdb/data/~2F?hl=es-419" 
+};
 
-let PINES = JSON.parse(localStorage.getItem('ev_pines')) || defaultPines;
-let COMBOS = JSON.parse(localStorage.getItem('ev_combos')) || defaultCombos;
-let PRODUCTOS = JSON.parse(localStorage.getItem('ev_productos')) || defaultProductos;
+// Inicializar Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+let PINES = { admin: "3859", CO: "2233", MX: "3344", AR: "4455" };
+let COMBOS = { CO: 35000, MX: 199, AR: 2500 };
+let PRODUCTOS = [];
 
 let estado = { paisActual: 'CO', rolActual: null, carrito: [], comboSeleccionado: [null, null, null] };
 const Monedas = { CO: 'COP $', MX: 'MXN $', AR: 'ARS $' };
 
-window.onload = function() {
-  guardarEnLocalStorage();
+// ESCUCHAR CAMBIOS EN TIEMPO REAL DESDE LA NUBE
+db.ref().on('value', (snapshot) => {
+  const data = snapshot.val();
+  if (data) {
+    if (data.pines) PINES = data.pines;
+    if (data.combos) COMBOS = data.combos;
+    // Firebase guarda listas como objetos indexados a veces, lo convertimos a array limpio
+    if (data.productos) {
+      PRODUCTOS = Object.values(data.productos).filter(p => p !== null);
+    } else {
+      PRODUCTOS = [];
+    }
+  }
+  
+  // Ocultar pantalla de carga inicial y mostrar la app real
+  document.getElementById('loader-conexion').classList.add('hidden');
+  if(!estado.rolActual) {
+    document.getElementById('vista-seleccion-rol').classList.remove('hidden');
+  }
+  
   sincronizarCamposAdmin();
   actualizarVistaVenta();
-};
+  if (!document.getElementById('vista-admin').classList.contains('hidden')) {
+    renderizarTablaAdminProductos();
+  }
+});
 
-function guardarEnLocalStorage() {
-  localStorage.setItem('ev_pines', JSON.stringify(PINES));
-  localStorage.setItem('ev_combos', JSON.stringify(COMBOS));
-  localStorage.setItem('ev_productos', JSON.stringify(PRODUCTOS));
+function enviarDatosANube() {
+  db.ref().set({
+    pines: PINES,
+    combos: COMBOS,
+    productos: PRODUCTOS
+  });
 }
 
 function cambiarPais(codigoPais) {
@@ -52,8 +75,13 @@ function volverASeleccionRol() { estado.rolActual = null; estado.carrito = []; e
 function actualizarVistaVenta() {
   const divSeleccion = document.getElementById('vista-seleccion-rol');
   const divTienda = document.getElementById('vista-tienda');
-  document.getElementById('vista-admin').classList.add('hidden');
-  if (!estado.rolActual) { divSeleccion.classList.remove('hidden'); divTienda.classList.add('hidden'); return; }
+  if (!estado.rolActual) { 
+    if(PRODUCTOS.length > 0 || document.getElementById('loader-conexion').classList.contains('hidden')) {
+      divSeleccion.classList.remove('hidden'); 
+    }
+    divTienda.classList.add('hidden'); 
+    return; 
+  }
   divSeleccion.classList.add('hidden'); divTienda.classList.remove('hidden');
   document.getElementById('badge-pais').innerText = `País: ${estado.paisActual}`;
   document.getElementById('badge-rol').innerText = `Perfil: ${estado.rolActual.toUpperCase()}`;
@@ -140,8 +168,8 @@ function sincronizarCamposAdmin() {
   document.getElementById('input-combo-co').value = COMBOS.CO; document.getElementById('input-combo-mx').value = COMBOS.MX; document.getElementById('input-combo-ar').value = COMBOS.AR;
 }
 
-function guardarConfiguracionPines() { PINES.admin = document.getElementById('input-pin-admin').value.trim(); PINES.CO = document.getElementById('input-pin-co').value.trim(); PINES.MX = document.getElementById('input-pin-mx').value.trim(); PINES.AR = document.getElementById('input-pin-ar').value.trim(); guardarEnLocalStorage(); alert("🔑 PINs guardados."); }
-function guardarPreciosCombo() { COMBOS.CO = parseFloat(document.getElementById('input-combo-co').value) || 0; COMBOS.MX = parseFloat(document.getElementById('input-combo-mx').value) || 0; COMBOS.AR = parseFloat(document.getElementById('input-combo-ar').value) || 0; guardarEnLocalStorage(); alert("💰 Tarifas Combo guardadas."); }
+function guardarConfiguracionPines() { PINES.admin = document.getElementById('input-pin-admin').value.trim(); PINES.CO = document.getElementById('input-pin-co').value.trim(); PINES.MX = document.getElementById('input-pin-mx').value.trim(); PINES.AR = document.getElementById('input-pin-ar').value.trim(); enviarDatosANube(); alert("🔑 PINs guardados en la nube."); }
+function guardarPreciosCombo() { COMBOS.CO = parseFloat(document.getElementById('input-combo-co').value) || 0; COMBOS.MX = parseFloat(document.getElementById('input-combo-mx').value) || 0; COMBOS.AR = parseFloat(document.getElementById('input-combo-ar').value) || 0; enviarDatosANube(); alert("💰 Tarifas Combo guardadas en la nube."); }
 
 function guardarProducto() {
   const indexStr = document.getElementById('form-product-index').value;
@@ -165,7 +193,7 @@ function guardarProducto() {
     }
     PRODUCTOS[idx] = estructura;
   }
-  guardarEnLocalStorage(); limpiarFormularioProducto(); renderizarTablaAdminProductos(); alert("✨ Guardado en la base de datos.");
+  enviarDatosANube(); limpiarFormularioProducto(); renderizarTablaAdminProductos(); alert("✨ Guardado en la nube.");
 }
 
 function editarProducto(idx) {
@@ -185,7 +213,7 @@ function eliminarProducto(idx) {
     const pB = PRODUCTOS[idx];
     for(let i=0; i<3; i++) { if(estado.comboSeleccionado[i] && estado.comboSeleccionado[i].nombre === pB.nombre && estado.comboSeleccionado[i].pais === pB.pais) estado.comboSeleccionado[i] = null; }
     estado.carrito = estado.carrito.filter(item => !(item.producto.nombre === pB.nombre && item.producto.pais === pB.pais));
-    PRODUCTOS.splice(idx, 1); guardarEnLocalStorage(); renderizarTablaAdminProductos();
+    PRODUCTOS.splice(idx, 1); enviarDatosANube(); renderizarTablaAdminProductos();
   }
 }
 
@@ -197,7 +225,7 @@ function limpiarFormularioProducto() {
 
 function renderizarTablaAdminProductos() {
   const tbody = document.getElementById('tabla-admin-productos'); tbody.innerHTML = '';
-  if (PRODUCTOS.length === 0) { tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-gray-400">No hay productos.</td></tr>`; return; }
+  if (PRODUCTOS.length === 0) { tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-gray-400">No hay productos en la base de datos de la nube.</td></tr>`; return; }
   PRODUCTOS.forEach((prod, index) => {
     tbody.innerHTML += `<tr class="hover:bg-gray-50 text-gray-700"><td class="p-3.5 text-xs font-bold font-mono text-yellow-600">${prod.pais}</td><td class="p-3.5"><span class="bg-gray-100 text-gray-600 text-[10px] uppercase font-black px-2 py-0.5 rounded">${prod.categoria}</span></td><td class="p-3.5 font-bold text-gray-800 text-xs">${prod.nombre}</td><td class="p-3.5">${prod.agotado ? '<span class="bg-red-50 text-red-600 border border-red-200 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase">Agotado</span>' : '<span class="bg-emerald-50 text-emerald-600 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase">Disponible</span>'}</td><td class="p-3.5 text-xs font-black">${Monedas[prod.pais]}${prod.precioCliente.toLocaleString()}</td><td class="p-3.5 text-xs font-black">${Monedas[prod.pais]}${prod.precioRevendedor.toLocaleString()}</td><td class="p-3.5 text-center"><button onclick="editarProducto(${index})" class="bg-gray-100 hover:bg-yellow-100 text-gray-600 text-xs font-bold py-1 px-3 rounded-lg border border-gray-200">Editar</button> <button onclick="eliminarProducto(${index})" class="bg-red-50 text-red-500 text-xs font-bold py-1 px-3 rounded-lg border border-red-200">Borrar</button></td></tr>`;
   });
