@@ -1,7 +1,6 @@
 // CONFIGURACIÓN DE TU BASE DE DATOS EN LA NUBE
 const firebaseConfig = {
-  databaseURL: "
-https://edwstreaming-eba93-default-rtdb.firebaseio.com/" 
+  databaseURL: "https://edwstreaming-eba93-default-rtdb.firebaseio.com/" 
 };
 
 // Inicializar Firebase
