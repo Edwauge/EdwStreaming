@@ -1,11 +1,13 @@
-// Configuración Inicial de Pines, Tarifas de Combo y Monedas
+// Base de datos inicial con soporte completo para la pestaña USD-EUR
 const defaultPines = { admin: "3859", CO: "2233", MX: "3344", AR: "4455", USDEUR: "5566" };
 const defaultCombos = { CO: 35000, MX: 199, AR: 2500, USDEUR: 10 };
 const defaultProductos = [
+  // Productos de prueba iniciales (se pueden editar o borrar desde el panel admin)
   { nombre: "SPOTIFY PREMIUM - 1 Año Cuenta Nueva", categoria: "Spotify", pais: "CO", precioCliente: 45000, precioRevendedor: 38000, agotado: false },
   { nombre: "Netflix - 1 Perfil UHD Premium (Mes)", categoria: "Netflix", pais: "CO", precioCliente: 15000, precioRevendedor: 11000, agotado: false },
   { nombre: "Disney+ - 1 Perfil Estándar (Mes)", categoria: "Disney+", pais: "CO", precioCliente: 10000, precioRevendedor: 7500, agotado: false },
-  { nombre: "Netflix - 1 Perfil UHD Premium (Mes)", categoria: "Netflix", pais: "MX", precioCliente: 89, precioRevendedor: 65, agotado: false }
+  { nombre: "Netflix - 1 Perfil UHD Premium (Mes)", categoria: "Netflix", pais: "MX", precioCliente: 89, precioRevendedor: 65, agotado: false },
+  { nombre: "Crunchyroll Mega Fan - 1 Mes", categoria: "Crunchyroll", pais: "USDEUR", precioCliente: 5, precioRevendedor: 3.5, agotado: false }
 ];
 
 let PINES = JSON.parse(localStorage.getItem('ev_pines')) || defaultPines;
@@ -15,6 +17,7 @@ let PRODUCTOS = JSON.parse(localStorage.getItem('ev_productos')) || defaultProdu
 let estado = { paisActual: 'CO', rolActual: null, carrito: [], comboSeleccionado: [null, null, null] };
 const Monedas = { CO: 'COP $', MX: 'MXN $', AR: 'ARS $', USDEUR: 'USD $' };
 
+// Ejecución al iniciar la página
 window.onload = function() {
   guardarEnLocalStorage();
   sincronizarCamposAdmin();
@@ -27,7 +30,7 @@ function guardarEnLocalStorage() {
   localStorage.setItem('ev_productos', JSON.stringify(PRODUCTOS));
 }
 
-// Navegación limpia de pestañas sin alterar tus estilos css tradicionales
+// Navegación limpia entre las pestañas superiores
 function cambiarPais(codigoPais) {
   estado.paisActual = codigoPais;
   estado.carrito = []; 
@@ -37,13 +40,13 @@ function cambiarPais(codigoPais) {
     const btn = document.getElementById(`tab-${p}`);
     if (btn) {
       if (p === codigoPais) {
-        btn.className = "flex-1 py-4 px-3 text-center font-bold text-sm sm:text-base border-b-2 border-yellow-500 text-yellow-600 transition-all";
+        btn.className = "flex-1 py-4 px-2 text-center font-bold text-xs sm:text-base border-b-2 border-amber-500 text-amber-600 transition-all";
       } else {
-        btn.className = "flex-1 py-4 px-3 text-center font-bold text-sm sm:text-base border-b-2 border-transparent text-gray-400 hover:text-gray-700 transition-all";
+        btn.className = "flex-1 py-4 px-2 text-center font-bold text-xs sm:text-base border-b-2 border-transparent text-gray-400 hover:text-gray-700 transition-all";
       }
     }
   });
-  estado.rolActual = null;
+  estado.rolActual = null; // Reinicia el perfil al cambiar de país para pedir credenciales correspondientes
   actualizarVistaVenta();
 }
 
@@ -52,12 +55,12 @@ function seleccionarRol(rol) {
   actualizarVistaVenta(); 
 }
 
-// Volvemos al sistema de prompt tradicional para evitar conflictos de maquetación
+// Ventana emergente clásica del navegador para validar el PIN de revendedores sin trabar la interfaz
 function abrirModalPinRol() { 
   let paisTexto = estado.paisActual === 'CO' ? 'Colombia' : estado.paisActual === 'MX' ? 'México' : estado.paisActual === 'AR' ? 'Argentina' : 'USD-EUR';
   let pinIngresado = prompt(`🔒 Ingrese su PIN de acceso para el catálogo ${paisTexto}:`);
   
-  if (pinIngresado === null) return; // Si cancela, no hace nada
+  if (pinIngresado === null) return; // Si el usuario cancela, no hace nada
   
   if (pinIngresado === PINES[estado.paisActual]) { 
     seleccionarRol('revendedor'); 
@@ -73,6 +76,7 @@ function volverASeleccionRol() {
   actualizarVistaVenta(); 
 }
 
+// Control central de renderizado de vistas en pantalla
 function actualizarVistaVenta() {
   const divSeleccion = document.getElementById('vista-seleccion-rol');
   const divTienda = document.getElementById('vista-tienda');
@@ -92,7 +96,7 @@ function actualizarVistaVenta() {
   const bPais = document.getElementById('badge-pais');
   const bRol = document.getElementById('badge-rol');
   if(bPais) bPais.innerText = `País: ${estado.paisActual === 'USDEUR' ? 'USD-EUR' : estado.paisActual}`;
-  if(bRol) bRol.innerText = `Perfil: ${estado.rolActual.toUpperCase()}`;
+  if(bRol) bRol.innerText = `Perfil: ${estado.rolActual === 'cliente' ? 'Cliente' : 'Revendedor'}`;
   
   const seccionCombo = document.getElementById('seccion-oferta-combo');
   if (estado.rolActual === 'cliente') { 
@@ -114,8 +118,8 @@ function renderizarSlotsCombo() {
   for (let i = 0; i < 3; i++) {
     const item = estado.comboSeleccionado[i];
     container.innerHTML += item 
-      ? `<div class="bg-yellow-50 border border-yellow-300 rounded-xl p-3 flex flex-col justify-between text-left transition-all"><span class="text-xs text-yellow-800 font-bold block mb-1 truncate">${item.nombre}</span><button onclick="removerItemCombo(${i})" class="text-left text-red-500 hover:text-red-700 text-xs font-bold flex items-center gap-1 mt-1"><i class="fa-solid fa-trash-can text-[10px]"></i> Quitar</button></div>` 
-      : `<div class="bg-gray-50 border border-dashed border-gray-300 rounded-xl p-4 flex flex-col items-center justify-center text-center text-gray-400 text-xs"><i class="fa-solid fa-layer-group text-base mb-1 text-gray-300"></i><span>Slot ${i + 1} libre</span></div>`;
+      ? `<div class="bg-white border border-amber-300 rounded-xl p-3 flex flex-col justify-between text-left text-gray-800"><span class="text-xs font-bold block mb-1 truncate">${item.nombre}</span><button onclick="removerItemCombo(${i})" class="text-left text-red-500 hover:text-red-700 text-xs font-bold flex items-center gap-1 mt-1"><i class="fa-solid fa-trash-can text-[10px]"></i> Quitar</button></div>` 
+      : `<div class="bg-white/10 border border-dashed border-white/40 rounded-xl p-4 flex flex-col items-center justify-center text-center text-white/70 text-xs"><i class="fa-solid fa-layer-group text-base mb-1 opacity-60"></i><span>Slot ${i + 1} libre</span></div>`;
   }
 }
 
@@ -125,8 +129,8 @@ function renderizarCatalogoProductos() {
   container.innerHTML = '';
   const filtrados = PRODUCTOS.filter(p => p.pais === estado.paisActual);
   
-  if(filtrados.length === 0) { 
-    container.innerHTML = `<p class="text-xs text-gray-400 col-span-2 py-6 text-center bg-white border border-gray-200 rounded-2xl shadow-xs">No hay productos disponibles para esta región todavía.</p>`; 
+  if(filtrados.length === 0) {
+    container.innerHTML = `<p class="text-xs text-gray-400 col-span-1 sm:col-span-2 py-8 text-center bg-white border border-gray-200 rounded-2xl shadow-xs">No hay productos disponibles para esta región todavía.</p>`; 
     return; 
   }
   
@@ -136,9 +140,9 @@ function renderizarCatalogoProductos() {
     
     let botonesHTML = prod.agotado 
       ? `<button disabled class="w-full bg-gray-100 text-gray-400 font-bold py-2.5 px-3 rounded-xl text-xs cursor-not-allowed border border-gray-200 text-center">Temporalmente Sin Stock</button>` 
-      : `<button onclick="agregarAlCarrito(${indexGlobal})" class="flex-1 bg-gray-100 hover:bg-yellow-100/60 text-gray-700 hover:text-yellow-800 font-bold py-2.5 px-3 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 border border-gray-200/60 hover:border-yellow-200"><i class="fa-solid fa-cart-plus opacity-70"></i> Al Carrito</button>` + (estado.rolActual === 'cliente' ? `<button onclick="agregarAlComboEspecial(${indexGlobal})" class="bg-yellow-400/90 hover:bg-yellow-400 text-gray-900 font-extrabold py-2.5 px-3 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 shadow-xs"><i class="fa-solid fa-wand-magic-sparkles text-xs"></i> Combo 3</button>` : '');
+      : `<button onclick="agregarAlCarrito(${indexGlobal})" class="flex-1 bg-gray-100 hover:bg-amber-100/60 text-gray-700 hover:text-amber-800 font-bold py-2.5 px-3 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 border border-gray-200/60 hover:border-amber-200"><i class="fa-solid fa-cart-plus opacity-70"></i> Al Carrito</button>` + (estado.rolActual === 'cliente' ? `<button onclick="agregarAlComboEspecial(${indexGlobal})" class="bg-amber-400 hover:bg-amber-500 text-gray-900 font-extrabold py-2.5 px-3 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 shadow-xs"><i class="fa-solid fa-wand-magic-sparkles text-xs"></i> Combo 3</button>` : '');
     
-    container.innerHTML += `<div class="${prod.agotado ? 'bg-white/80 border border-gray-200 rounded-2xl p-5 flex flex-col justify-between shadow-none opacity-60 select-none pointer-events-none' : 'bg-white border border-gray-200 rounded-2xl p-5 flex flex-col justify-between shadow-xs hover:shadow-md hover:border-gray-300 transition-all'}"><div><div class="flex justify-between items-center gap-2 mb-2">${prod.agotado ? '<span class="text-[10px] uppercase font-black px-2.5 py-0.5 rounded-full bg-red-100 text-red-600 tracking-wider">Agotado</span>' : `<span class="text-[10px] uppercase font-black px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-500 tracking-wider">${prod.categoria}</span>`}<span class="text-base font-black text-gray-900 tracking-tight">${Monedas[estado.paisActual]}${(precio || 0).toLocaleString()}</span></div><h4 class="text-sm font-bold text-gray-800 leading-snug mb-4">${prod.nombre}</h4></div><div class="flex gap-2 pt-3 border-t border-gray-100">${botonesHTML}</div></div>`;
+    container.innerHTML += `<div class="${prod.agotado ? 'bg-white opacity-60 border border-gray-200 rounded-2xl p-5 flex flex-col justify-between shadow-none' : 'bg-white border border-gray-200 rounded-2xl p-5 flex flex-col justify-between shadow-xs hover:shadow-md transition-all'}"><div><div class="flex justify-between items-center gap-2 mb-2">${prod.agotado ? '<span class="text-[10px] uppercase font-black px-2.5 py-0.5 rounded-full bg-red-100 text-red-600 tracking-wider">Agotado</span>' : `<span class="text-[10px] uppercase font-black px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-500 tracking-wider">${prod.categoria}</span>`}<span class="text-base font-black text-gray-900 tracking-tight">${Monedas[estado.paisActual]}${(precio || 0).toLocaleString()}</span></div><h4 class="text-sm font-bold text-gray-800 leading-snug mb-4">${prod.nombre}</h4></div><div class="flex gap-2 pt-3 border-t border-gray-100">${botonesHTML}</div></div>`;
   });
 }
 
@@ -178,7 +182,7 @@ function renderizarCarrito() {
       total += COMBOS[estado.paisActual] || 0; 
       if(dOferta) dOferta.classList.remove('hidden'); 
       if(dAhorro) dAhorro.innerText = `-${Monedas[estado.paisActual]}${(pNormal - (COMBOS[estado.paisActual] || 0)).toLocaleString()}`; 
-      container.innerHTML += `<div class="bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-300 p-3 rounded-xl text-xs shadow-xs"><div class="flex justify-between items-center mb-1"><span class="font-black text-yellow-800">Combo Especial Activado</span><span class="font-black text-yellow-700">${Monedas[estado.paisActual]}${(COMBOS[estado.paisActual] || 0).toLocaleString()}</span></div></div>`; 
+      container.innerHTML += `<div class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300 p-3 rounded-xl text-xs shadow-xs"><div class="flex justify-between items-center mb-1"><span class="font-black text-amber-800">Combo Especial Activado</span><span class="font-black text-amber-700">${Monedas[estado.paisActual]}${(COMBOS[estado.paisActual] || 0).toLocaleString()}</span></div></div>`; 
     }
     else { 
       total += pNormal; 
@@ -220,8 +224,8 @@ function cerrarAdmin() { document.getElementById('vista-admin')?.classList.add('
 
 function sincronizarCamposAdmin() {
   const elements = {
-    'input-pin-admin': PINES.admin, 'input-pin-co': PINES.CO, 'input-pin-mx': PINES.MX, 'input-pin-ar': PINES.AR,
-    'input-combo-co': COMBOS.CO, 'input-combo-mx': COMBOS.MX, 'input-combo-ar': COMBOS.AR
+    'input-pin-admin': PINES.admin, 'input-pin-co': PINES.CO, 'input-pin-mx': PINES.MX, 'input-pin-ar': PINES.AR, 'input-pin-usdeur': PINES.USDEUR,
+    'input-combo-co': COMBOS.CO, 'input-combo-mx': COMBOS.MX, 'input-combo-ar': COMBOS.AR, 'input-combo-usdeur': COMBOS.USDEUR
   };
   for (let id in elements) {
     const el = document.getElementById(id);
@@ -234,14 +238,16 @@ function guardarConfiguracionPines() {
   PINES.CO = document.getElementById('input-pin-co')?.value.trim() || PINES.CO; 
   PINES.MX = document.getElementById('input-pin-mx')?.value.trim() || PINES.MX; 
   PINES.AR = document.getElementById('input-pin-ar')?.value.trim() || PINES.AR; 
-  guardarEnLocalStorage(); alert("🔑 PINs guardados."); 
+  PINES.USDEUR = document.getElementById('input-pin-usdeur')?.value.trim() || PINES.USDEUR; 
+  guardarEnLocalStorage(); alert("🔑 PINs guardados exitosamente."); 
 }
 
 function guardarPreciosCombo() { 
   COMBOS.CO = parseFloat(document.getElementById('input-combo-co')?.value) || COMBOS.CO; 
   COMBOS.MX = parseFloat(document.getElementById('input-combo-mx')?.value) || COMBOS.MX; 
   COMBOS.AR = parseFloat(document.getElementById('input-combo-ar')?.value) || COMBOS.AR; 
-  guardarEnLocalStorage(); alert("💰 Tarifas Combo guardadas."); 
+  COMBOS.USDEUR = parseFloat(document.getElementById('input-combo-usdeur')?.value) || COMBOS.USDEUR; 
+  guardarEnLocalStorage(); alert("💰 Tarifas Combo guardadas exitosamente."); 
 }
 
 function guardarProducto() {
@@ -261,7 +267,7 @@ function guardarProducto() {
     const idx = parseInt(indexStr);
     PRODUCTOS[idx] = estructura;
   }
-  guardarEnLocalStorage(); limpiarFormularioProducto(); renderizarTablaAdminProductos(); alert("✨ Guardado en la base de datos.");
+  guardarEnLocalStorage(); limpiarFormularioProducto(); renderizarTablaAdminProductos(); alert("✨ Cuenta de streaming actualizada en inventario.");
 }
 
 function editarProducto(idx) {
@@ -277,7 +283,7 @@ function editarProducto(idx) {
 }
 
 function eliminarProducto(idx) {
-  if (confirm("🗑️ ¿Eliminar este producto?")) {
+  if (confirm("🗑️ ¿Deseas eliminar este producto permanentemente de la base de datos?")) {
     PRODUCTOS.splice(idx, 1); 
     guardarEnLocalStorage(); 
     renderizarTablaAdminProductos();
@@ -296,6 +302,6 @@ function renderizarTablaAdminProductos() {
   tbody.innerHTML = '';
   if (PRODUCTOS.length === 0) { tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-gray-400">No hay productos.</td></tr>`; return; }
   PRODUCTOS.forEach((prod, index) => {
-    tbody.innerHTML += `<tr class="hover:bg-gray-50 text-gray-700"><td class="p-3.5 text-xs font-bold font-mono text-yellow-600">${prod.pais}</td><td class="p-3.5"><span class="bg-gray-100 text-gray-600 text-[10px] uppercase font-black px-2 py-0.5 rounded">${prod.categoria}</span></td><td class="p-3.5 font-bold text-gray-800 text-xs">${prod.nombre}</td><td class="p-3.5">${prod.agotado ? '<span class="bg-red-50 text-red-600 border border-red-200 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase">Agotado</span>' : '<span class="bg-emerald-50 text-emerald-600 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase">Disponible</span>'}</td><td class="p-3.5 text-xs font-black">${Monedas[prod.pais] || 'USD $'}${prod.precioCliente.toLocaleString()}</td><td class="p-3.5 text-xs font-black">${Monedas[prod.pais] || 'USD $'}${prod.precioRevendedor.toLocaleString()}</td><td class="p-3.5 text-center"><button onclick="editarProducto(${index})" class="bg-gray-100 hover:bg-yellow-100 text-gray-600 text-xs font-bold py-1 px-3 rounded-lg border border-gray-200">Editar</button> <button onclick="eliminarProducto(${index})" class="bg-red-50 text-red-500 text-xs font-bold py-1 px-3 rounded-lg border border-red-200">Borrar</button></td></tr>`;
+    tbody.innerHTML += `<tr class="hover:bg-gray-50 text-gray-700"><td class="p-3.5 text-xs font-bold font-mono text-amber-600">${prod.pais}</td><td class="p-3.5"><span class="bg-gray-100 text-gray-600 text-[10px] uppercase font-black px-2 py-0.5 rounded">${prod.categoria}</span></td><td class="p-3.5 font-bold text-gray-800 text-xs">${prod.nombre}</td><td class="p-3.5">${prod.agotado ? '<span class="bg-red-50 text-red-600 border border-red-200 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase">Agotado</span>' : '<span class="bg-emerald-50 text-emerald-600 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase">Disponible</span>'}</td><td class="p-3.5 text-xs font-black">${Monedas[prod.pais] || 'USD $'}${prod.precioCliente.toLocaleString()}</td><td class="p-3.5 text-xs font-black">${Monedas[prod.pais] || 'USD $'}${prod.precioRevendedor.toLocaleString()}</td><td class="p-3.5 text-center"><button onclick="editarProducto(${index})" class="bg-gray-100 hover:bg-amber-100 text-gray-600 text-xs font-bold py-1 px-3 rounded-lg border border-gray-200">Editar</button> <button onclick="eliminarProducto(${index})" class="bg-red-50 text-red-500 text-xs font-bold py-1 px-3 rounded-lg border border-red-200">Borrar</button></td></tr>`;
   });
 }
