@@ -1,305 +1,86 @@
-// ==========================================
-// CONFIGURACIÓN DE TU BASE DE DATOS EN LA NUBE
-// ==========================================
-const firebaseConfig = {
-  databaseURL: "https://edwstreaming-eba93-default-rtdb.firebaseio.com/" 
-};
+const defaultPines = { admin: "3859", CO: "2233", MX: "3344", AR: "4455", USDEUR: "5566" };
+const defaultCombos = { CO: 35000, MX: 199, AR: 2500, USDEUR: 10 };
+const defaultProductos = [
+  { nombre: "SPOTIFY PREMIUM - 1 Año Cuenta Nueva", categoria: "Spotify", pais: "CO", precioCliente: 45000, precioRevendedor: 38000, agotado: false },
+  { nombre: "Netflix - 1 Perfil UHD Premium (Mes)", categoria: "Netflix", pais: "CO", precioCliente: 15000, precioRevendedor: 11000, agotado: false },
+  { nombre: "Disney+ - 1 Perfil Estándar (Mes)", categoria: "Disney+", pais: "CO", precioCliente: 10000, precioRevendedor: 7500, agotado: false },
+  { nombre: "Netflix - 1 Perfil UHD Premium (Mes)", categoria: "Netflix", pais: "MX", precioCliente: 89, precioRevendedor: 65, agotado: false }
+];
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+let PINES = JSON.parse(localStorage.getItem('ev_pines')) || defaultPines;
+let COMBOS = JSON.parse(localStorage.getItem('ev_combos')) || defaultCombos;
+let PRODUCTOS = JSON.parse(localStorage.getItem('ev_productos')) || defaultProductos;
 
-// PINES Y PRECIOS BASE ORIGINALES + SOPORTE INTERNACIONAL
-let PINES = { admin: "3859", CO: "2233", MX: "3344", AR: "4455", USDEUR: "5566" };
-let COMBOS = { CO: 35000, MX: 199, AR: 2500, USDEUR: 9.99 };
-let PRODUCTOS = [];
-
-let estado = { 
-  paisActual: 'CO', 
-  rolActual: 'cliente', 
-  carrito: [], 
-  comboSeleccionado: [null, null, null],
-  monedaGlobalUS: 'USD'
-};
-
+// Guardamos la moneda secundaria por si necesitas renderizar dinámicamente USD o EUR
+let estado = { paisActual: 'CO', rolActual: null, carrito: [], comboSeleccionado: [null, null, null], monedaInternacional: 'USD' };
 const Monedas = { 
   CO: 'COP $', 
   MX: 'MXN $', 
   AR: 'ARS $',
-  get USDEUR() { return estado.monedaGlobalUS === 'USD' ? 'USD $' : 'EUR €'; }
+  USDEUR: 'USD $' // Moneda base para la sección internacional
 };
 
-// ==========================================
-// ESCUCHAR EN TIEMPO REAL DESDE LA NUBE
-// ==========================================
-db.ref().on('value', (snapshot) => {
-  const data = snapshot.val();
-  if (data) {
-    PRODUCTOS = data.productos ? Object.values(data.productos) : [];
-    renderizarProductos();
-    renderizarCarrito();
-  }
-});
+window.onload = function() {
+  guardarEnLocalStorage();
+  sincronizarCamposAdmin();
+  actualizarVistaVenta();
+};
 
-// ==========================================
-// LÓGICA DE VALIDACIÓN DE PIN ORIGINAL (PROMPT)
-// ==========================================
-function validarPinAcceso(pinIngresado) {
-  if (pinIngresado === PINES.admin) {
-    estado.rolActual = 'admin';
-    document.getElementById('etiqueta-rol').innerText = 'Administrador';
-    alert("👑 Modo Administrador Global Conectado.");
-    if (typeof abrirPanelAdmin === 'function') abrirPanelAdmin();
-  } else if (pinIngresado === PINES[estado.paisActual]) {
-    estado.rolActual = 'revendedor';
-    document.getElementById('etiqueta-rol').innerText = `Revendedor (${estado.paisActual})`;
-    alert(`💼 Modo Revendedor Autorizado (${estado.paisActual}) Activo.`);
-  } else {
-    estado.rolActual = 'cliente';
-    document.getElementById('etiqueta-rol').innerText = 'Cliente';
-    alert("❌ PIN Incorrecto. Ingresando como Cliente Final.");
-  }
-  renderizarProductos();
-  renderizarCarrito();
+function guardarEnLocalStorage() {
+  localStorage.setItem('ev_pines', JSON.stringify(PINES));
+  localStorage.setItem('ev_combos', JSON.stringify(COMBOS));
+  localStorage.setItem('ev_productos', JSON.stringify(PRODUCTOS));
 }
 
-// ==========================================
-// NAVEGACIÓN DE PAÍSES Y CONTROLES
-// ==========================================
-function cambiarPais(pais) {
-  estado.paisActual = pais;
-  estado.carrito = [];
+function cambiarPais(codigoPais) {
+  estado.paisActual = codigoPais;
+  estado.carrito = []; 
   estado.comboSeleccionado = [null, null, null];
   
-  document.querySelectorAll('.tab-button').forEach(btn => {
-    btn.classList.remove('border-amber-500', 'text-amber-600');
-    btn.classList.add('border-transparent', 'text-gray-400');
-  });
-  
-  const botonActivo = document.getElementById(`tab-${pais}`);
-  if (botonActivo) {
-    botonActivo.classList.remove('border-transparent', 'text-gray-400');
-    botonActivo.classList.add('border-amber-500', 'text-amber-600');
-  }
-
-  // Actualizar etiqueta de rol según el país
-  if (estado.rolActual === 'revendedor') {
-    document.getElementById('etiqueta-rol').innerText = `Revendedor (${pais})`;
-  } else if (estado.rolActual === 'admin') {
-    document.getElementById('etiqueta-rol').innerText = 'Administrador';
-  } else {
-    document.getElementById('etiqueta-rol').innerText = 'Cliente';
-  }
-
-  chequearPestañaInternacional(pais);
-  renderizarProductos();
-  renderizarCarrito();
-}
-
-function chequearPestañaInternacional(pais) {
-  const contenedorFiltroMoneda = document.getElementById('selector-moneda-us');
-  if (!contenedorFiltroMoneda) return;
-
-  if (pais === 'USDEUR') {
-    contenedorFiltroMoneda.innerHTML = `
-      <div class="flex justify-center gap-4 my-4 p-2 bg-gray-50 rounded-xl border border-gray-100 max-w-xs mx-auto shadow-xs">
-        <button onclick="cambiarMonedaInternacional('USD')" class="flex-1 py-2 text-xs font-black rounded-lg transition-all ${estado.monedaGlobalUS === 'USD' ? 'bg-amber-500 text-white shadow-md scale-105' : 'bg-white text-gray-700 border border-gray-200'}">Ver en USD ($)</button>
-        <button onclick="cambiarMonedaInternacional('EUR')" class="flex-1 py-2 text-xs font-black rounded-lg transition-all ${estado.monedaGlobalUS === 'EUR' ? 'bg-amber-500 text-white shadow-md scale-105' : 'bg-white text-gray-700 border border-gray-200'}">Ver en EUR (€)</button>
-      </div>
-    `;
-  } else {
-    contenedorFiltroMoneda.innerHTML = '';
-  }
-}
-
-function cambiarMonedaInternacional(nuevaMoneda) {
-  estado.monedaGlobalUS = nuevaMoneda;
-  chequearPestañaInternacional('USDEUR');
-  renderizarProductos();
-  renderizarCarrito();
-}
-
-// ==========================================
-// RENDERIZADO DE PRODUCTOS ORIGINAL
-// ==========================================
-function renderizarProductos() {
-  const container = document.getElementById('contenedor-productos');
-  if (!container) return;
-  container.innerHTML = '';
-
-  const productosFiltrados = PRODUCTOS.filter(p => p.pais === estado.paisActual);
-
-  if (productosFiltrados.length === 0) {
-    container.innerHTML = `<p class="text-center text-gray-400 py-8 text-sm col-span-2">No hay productos disponibles para esta región todavía.</p>`;
-    return;
-  }
-
-  productosFiltrados.forEach(prod => {
-    const precio = estado.rolActual === 'revendedor' ? prod.precioRevendedor : prod.precioCliente;
-    const precioTexto = `${Monedas[estado.paisActual]}${Number(precio).toLocaleString()}`;
-    
-    let botonComboHTML = '';
-    if (estado.rolActual !== 'revendedor') {
-      botonComboHTML = `<button onclick="seleccionarParaCombo('${prod.id}')" class="bg-amber-500 text-white text-xs font-bold px-3 py-2.5 rounded-xl hover:bg-amber-600 transition-all cursor-pointer">➕ Combo</button>`;
+  // Lista de pestañas incluyendo la nueva pestaña internacional
+  ['CO', 'MX', 'AR', 'USDEUR'].forEach(p => {
+    const btn = document.getElementById(`tab-${p}`);
+    if (btn) {
+      btn.className = p === codigoPais ? "flex-1 py-4 text-center font-bold text-sm sm:text-base border-b-2 border-yellow-500 text-yellow-600 transition-all" : "flex-1 py-4 text-center font-bold text-sm sm:text-base border-b-2 border-transparent text-gray-400 hover:text-gray-700 transition-all";
     }
-
-    container.innerHTML += `
-      <div class="bg-white rounded-2xl p-4 shadow-xs border border-gray-100 flex flex-col justify-between hover:shadow-md transition-all">
-        <div>
-          <div class="flex justify-between items-start mb-2">
-            <h3 class="font-bold text-gray-800 text-sm sm:text-base">${prod.nombre}</h3>
-            <span class="text-xs bg-amber-50 text-amber-700 font-bold px-2 py-0.5 rounded-md">${prod.categoria || 'Streaming'}</span>
-          </div>
-          <p class="text-lg font-black text-amber-600 mb-4">${precioTexto}</p>
-        </div>
-        <div class="flex gap-2">
-          <button onclick="agregarAlCarrito('${prod.id}')" class="flex-1 bg-gray-900 text-white text-xs font-bold py-2.5 rounded-xl hover:bg-gray-800 transition-all cursor-pointer">🛒 Agregar</button>
-          ${botonComboHTML}
-        </div>
-      </div>
-    `;
   });
+  estado.rolActual = null;
+  actualizarVistaVenta();
 }
 
-// ==========================================
-// LOGICA DE AGREGAR ELEMENTOS Y COMBOS ORIGINAL
-// ==========================================
-function agregarAlCarrito(id) {
-  const prod = PRODUCTOS.find(p => String(p.id) === String(id));
-  if (!prod) return;
+function seleccionarRol(rol) { estado.rolActual = rol; actualizarVistaVenta(); }
 
-  const itemExistente = estado.carrito.find(item => String(item.producto.id) === String(prod.id));
-  if (itemExistente) {
-    itemExistente.cantidad++;
-  } else {
-    estado.carrito.push({ producto: prod, cantidad: 1 });
-  }
-  renderizarCarrito();
+function abrirModalPinRol() { 
+  document.getElementById('modal-pin-rol-pais').innerText = estado.paisActual === 'CO' ? 'Colombia' : estado.paisActual === 'MX' ? 'México' : estado.paisActual === 'AR' ? 'Argentina' : 'USD-EUR'; 
+  document.getElementById('input-modal-pin-rol').value = ''; 
+  document.getElementById('modal-pin-rol').classList.remove('hidden'); 
 }
 
-function seleccionarParaCombo(id) {
-  const prod = PRODUCTOS.find(p => String(p.id) === String(id));
-  if (!prod) return;
+function cerrarModalPinRol() { document.getElementById('modal-pin-rol').classList.add('hidden'); }
 
-  const slotLibre = estado.comboSeleccionado.findIndex(slot => slot === null);
-  if (slotLibre !== -1) {
-    estado.comboSeleccionado[slotLibre] = prod;
-  } else {
-    alert("🔥 Tu Combo Especial ya tiene 3 productos seleccionados.");
-  }
-  renderizarCarrito();
+function validarPinRol() {
+  if(document.getElementById('input-modal-pin-rol').value === PINES[estado.paisActual]) { cerrarModalPinRol(); seleccionarRol('revendedor'); }
+  else { alert("❌ Código PIN incorrecto para este catálogo."); }
 }
 
-function quitarDelCombo(idx) {
-  estado.comboSeleccionado[idx] = null;
-  renderizarCarrito();
+function volverASeleccionRol() { estado.rolActual = null; estado.carrito = []; estado.comboSeleccionado = [null, null, null]; actualizarVistaVenta(); }
+
+function actualizarVistaVenta() {
+  const divSeleccion = document.getElementById('vista-seleccion-rol');
+  const divTienda = document.getElementById('vista-tienda');
+  document.getElementById('vista-admin').classList.add('hidden');
+  if (!estado.rolActual) { divSeleccion.classList.remove('hidden'); divTienda.classList.add('hidden'); return; }
+  divSeleccion.classList.add('hidden'); divTienda.classList.remove('hidden');
+  document.getElementById('badge-pais').innerText = `País: ${estado.paisActual === 'USDEUR' ? 'USD-EUR' : estado.paisActual}`;
+  document.getElementById('badge-rol').innerText = `Perfil: ${estado.rolActual.toUpperCase()}`;
+  const seccionCombo = document.getElementById('seccion-oferta-combo');
+  if (estado.rolActual === 'cliente') { seccionCombo.classList.remove('hidden'); document.getElementById('precio-combo-texto').innerText = `${Monedas[estado.paisActual]}${COMBOS[estado.paisActual].toLocaleString()}`; renderizarSlotsCombo(); }
+  else { seccionCombo.classList.add('hidden'); }
+  renderizarCatalogoProductos(); renderizarCarrito();
 }
 
-function cambiarCantidad(id, cambio) {
-  const item = estado.carrito.find(item => String(item.producto.id) === String(id));
-  if (!item) return;
-  item.cantidad += cambio;
-  if (item.cantidad <= 0) {
-    estado.carrito = estado.carrito.filter(i => String(i.producto.id) !== String(id));
-  }
-  renderizarCarrito();
-}
-
-function renderizarCarrito() {
-  const container = document.getElementById('items-carrito');
-  if (!container) return;
-  container.innerHTML = '';
-
-  let total = 0;
-
-  estado.carrito.forEach(item => {
-    const precioUnidad = estado.rolActual === 'revendedor' ? item.producto.precioRevendedor : item.producto.precioCliente;
-    const subtotalItem = precioUnidad * item.cantidad;
-    total += subtotalItem;
-
-    container.innerHTML += `
-      <div class="flex justify-between items-center bg-gray-50 p-3 rounded-xl border border-gray-100 text-xs">
-        <div class="flex-1 pr-2">
-          <p class="font-bold text-gray-800">${item.producto.nombre}</p>
-          <p class="text-amber-600 font-medium">${Monedas[estado.paisActual]}${subtotalItem.toLocaleString()}</p>
-        </div>
-        <div class="flex items-center gap-2 bg-white border border-gray-200 rounded-lg p-1">
-          <button onclick="cambiarCantidad('${item.producto.id}', -1)" class="w-5 h-5 font-bold flex items-center justify-center bg-gray-100 rounded-sm text-gray-600 hover:bg-gray-200 cursor-pointer">-</button>
-          <span class="font-bold text-gray-700 min-w-4 text-center">${item.cantidad}</span>
-          <button onclick="cambiarCantidad('${item.producto.id}', 1)" class="w-5 h-5 font-bold flex items-center justify-center bg-gray-100 rounded-sm text-gray-600 hover:bg-gray-200 cursor-pointer">+</button>
-        </div>
-      </div>
-    `;
-  });
-
-  const pCombo = estado.comboSeleccionado.filter(p => p !== null).length;
-  
-  if (estado.rolActual !== 'revendedor') {
-    let comboHTML = `<div class="mt-4 p-3 bg-amber-50 rounded-xl border border-amber-200"><p class="text-xs font-black text-amber-900 mb-2 flex justify-between">🔥 Súper Combo (Elige 3 Productos): <span>${pCombo}/3</span></p><div class="grid grid-cols-3 gap-2">`;
-    
-    estado.comboSeleccionado.forEach((prod, idx) => {
-      if (prod) {
-        comboHTML += `
-          <div class="relative bg-white border border-amber-300 p-2 rounded-lg text-[10px] font-bold text-center text-amber-800 flex flex-col justify-between min-h-[50px]">
-            <span>${prod.nombre}</span>
-            <button onclick="quitarDelCombo(${idx})" class="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center text-[8px] font-black shadow-xs cursor-pointer">×</button>
-          </div>
-        `;
-      } else {
-        comboHTML += `
-          <div class="bg-dashed border-2 border-dashed border-gray-200 rounded-lg text-[10px] text-gray-400 flex items-center justify-center text-center p-2 min-h-[50px]">Vacío</div>
-        `;
-      }
-    });
-    
-    comboHTML += `</div>`;
-
-    if (pCombo === 3) {
-      total += COMBOS[estado.paisActual];
-      comboHTML += `
-        <div class="mt-2 flex justify-between items-center text-xs bg-amber-500 text-white p-2 rounded-lg font-black">
-          <span>¡Combo Activado!</span>
-          <span>${Monedas[estado.paisActual]}${COMBOS[estado.paisActual].toLocaleString()}</span>
-        </div>
-      `;
-    }
-    comboHTML += `</div>`;
-    container.innerHTML += comboHTML;
-  }
-
-  const elementoTotal = document.getElementById('total-carrito');
-  if (elementoTotal) {
-    elementoTotal.innerText = `${Monedas[estado.paisActual]}${total.toLocaleString()}`;
-  }
-}
-
-// ==========================================
-// SALIDA WHATSAPP ORIGINAL
-// ==========================================
-function obtenerProductoWhatsApp() {
-  const pCombo = estado.comboSeleccionado.filter(p => p !== null);
-  if (estado.carrito.length === 0 && pCombo.length === 0) { 
-    alert("🛒 Tu carrito de compras está vacío."); 
-    return; 
-  }
-  
-  let mensaje = `👋 ¡Hola *Edwauge.Vip*! Me interesa adquirir los siguientes productos de Streaming:\n\n🌍 *Catálogo:* ${estado.paisActual}\n👤 *Perfil:* ${estado.rolActual}\n-------------------------------------------\n`;
-  let total = 0;
-  
-  estado.carrito.forEach(item => {
-    const pU = estado.rolActual === 'revendedor' ? item.producto.precioRevendedor : item.producto.precioCliente;
-    total += pU * item.cantidad; 
-    mensaje += `📦 *${item.cantidad}x* ${item.producto.nombre} (${Monedas[estado.paisActual]}${(pU * item.cantidad).toLocaleString()})\n`;
-  });
-  
-  if (estado.rolActual !== 'revendedor' && pCombo.length === 3) { 
-    total += COMBOS[estado.paisActual]; 
-    mensaje += `\n🔥 *Súper Combo Especial (3 Productos):*\n`;
-    pCombo.forEach((prod, idx) => {
-      mensaje += `  ✨ *Ítem ${idx + 1}:* ${prod.nombre}\n`;
-    });
-    mensaje += `💰 *Precio Combo:* ${Monedas[estado.paisActual]}${COMBOS[estado.paisActual].toLocaleString()}\n`; 
-  }
-  
-  mensaje += `-------------------------------------------\n💰 *TOTAL NETO A PAGAR:* ${Monedas[estado.paisActual]}${total.toLocaleString()}`;
-  window.open(`https://api.whatsapp.com/send?phone=3022237839&text=${encodeURIComponent(mensaje)}`, '_blank');
-}
+function renderizarSlotsCombo() {
+  const container = document.getElementById('slots-combo'); container.innerHTML = '';
+  for (let i = 0; i < 3; i++) {
+    const item = estado.comboSeleccionado[i];
+    container.innerHTML
