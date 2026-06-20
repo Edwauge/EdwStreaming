@@ -5,27 +5,21 @@ const firebaseConfig = {
   databaseURL: "https://edwstreaming-eba93-default-rtdb.firebaseio.com/" 
 };
 
-// Inicializar Firebase
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// PINES DE ACCESO (Añadido USDEUR con PIN 5566)
 let PINES = { admin: "3859", CO: "2233", MX: "3344", AR: "4455", USDEUR: "5566" };
-
-// PRECIOS BASE DE COMBOS POR PAÍS/REGIÓN
 let COMBOS = { CO: 35000, MX: 199, AR: 2500, USDEUR: 9.99 };
 let PRODUCTOS = [];
 
-// ESTADO GLOBAL DE LA APLICACIÓN
 let estado = { 
   paisActual: 'CO', 
-  rolActual: null, 
+  rolActual: 'cliente', 
   carrito: [], 
   comboSeleccionado: [null, null, null],
-  monedaGlobalUS: 'USD' // Controla si la pestaña internacional muestra USD o EUR
+  monedaGlobalUS: 'USD'
 };
 
-// SÍMBOLOS DE MONEDAS DINÁMICOS
 const Monedas = { 
   CO: 'COP $', 
   MX: 'MXN $', 
@@ -34,28 +28,98 @@ const Monedas = {
 };
 
 // ==========================================
-// ESCUCHAR CAMBIOS EN TIEMPO REAL DESDE LA NUBE
+// CONEXIÓN EN TIEMPO REAL
 // ==========================================
 db.ref().on('value', (snapshot) => {
   const data = snapshot.val();
   if (data) {
-    // Si la base de datos tiene productos guardados, los cargamos
     PRODUCTOS = data.productos ? Object.values(data.productos) : [];
-    // Recargar la interfaz de forma automática
     renderizarProductos();
     renderizarCarrito();
   }
 });
 
 // ==========================================
-// LÓGICA DE NAVEGACIÓN Y CAMBIO DE PAÍS
+// INTERFAZ DEL MODAL DE ACCESO ESTÉTICO
+// ==========================================
+function abrirModalAcceso() {
+  const modal = document.getElementById('modal-acceso');
+  const caja = document.getElementById('modal-caja');
+  document.getElementById('input-pin-seguro').value = '';
+  regresarAVistaRoles();
+  
+  modal.classList.remove('hidden');
+  setTimeout(() => {
+    modal.classList.add('opacity-100');
+    caja.classList.remove('scale-95');
+    caja.classList.add('scale-100');
+  }, 10);
+}
+
+function cerrarModalAcceso() {
+  const modal = document.getElementById('modal-acceso');
+  const caja = document.getElementById('modal-caja');
+  
+  modal.classList.remove('opacity-100');
+  caja.classList.remove('scale-100');
+  caja.classList.add('scale-95');
+  setTimeout(() => {
+    modal.classList.add('hidden');
+  }, 300);
+}
+
+function mostrarVistaPin() {
+  document.getElementById('modal-vista-roles').classList.add('hidden');
+  document.getElementById('modal-vista-pin').classList.remove('hidden');
+  document.getElementById('input-pin-seguro').focus();
+}
+
+function regresarAVistaRoles() {
+  document.getElementById('modal-vista-pin').classList.add('hidden');
+  document.getElementById('modal-vista-roles').classList.remove('hidden');
+}
+
+function seleccionarRolDirecto(rol) {
+  estado.rolActual = rol;
+  document.getElementById('etiqueta-rol').innerText = 'Cliente';
+  cerrarModalAcceso();
+  renderizarProductos();
+  renderizarCarrito();
+}
+
+function procesarPinModal() {
+  const pin = document.getElementById('input-pin-seguro').value;
+  
+  if (pin === PINES.admin) {
+    estado.rolActual = 'admin';
+    document.getElementById('etiqueta-rol').innerText = 'Administrador';
+    alert("👑 Modo Administrador Global Conectado.");
+    cerrarModalAcceso();
+    if(typeof abrirPanelAdmin === 'function') abrirPanelAdmin();
+  } else if (pin === PINES[estado.paisActual]) {
+    estado.rolActual = 'revendedor';
+    document.getElementById('etiqueta-rol').innerText = `Revendedor (${estado.paisActual})`;
+    alert(`💼 Modo Revendedor Autorizado (${estado.paisActual}) Activo.`);
+    cerrarModalAcceso();
+  } else {
+    alert("❌ Código PIN inválido para la región actual.");
+    document.getElementById('input-pin-seguro').value = '';
+    document.getElementById('input-pin-seguro').focus();
+    return;
+  }
+  
+  renderizarProductos();
+  renderizarCarrito();
+}
+
+// ==========================================
+// CONTROL DE PAÍSES Y PESTAÑAS
 // ==========================================
 function cambiarPais(pais) {
   estado.paisActual = pais;
-  estado.carrito = []; // Limpiar carrito al cambiar de región para evitar mezclas
+  estado.carrito = [];
   estado.comboSeleccionado = [null, null, null];
   
-  // Controlar visualmente las pestañas activas
   document.querySelectorAll('.tab-button').forEach(btn => {
     btn.classList.remove('border-amber-500', 'text-amber-600');
     btn.classList.add('border-transparent', 'text-gray-400');
@@ -67,13 +131,16 @@ function cambiarPais(pais) {
     botonActivo.classList.add('border-amber-500', 'text-amber-600');
   }
 
-  // Comprobar si se activa el selector de monedas USD/EUR
+  // Sincronizar etiqueta de rol visual
+  if (estado.rolActual === 'revendedor') {
+    document.getElementById('etiqueta-rol').innerText = `Revendedor (${pais})`;
+  }
+
   chequearPestañaInternacional(pais);
   renderizarProductos();
   renderizarCarrito();
 }
 
-// Muestra u oculta los botones de USD/EUR de forma limpia
 function chequearPestañaInternacional(pais) {
   const contenedorFiltroMoneda = document.getElementById('selector-moneda-us');
   if (!contenedorFiltroMoneda) return;
@@ -98,18 +165,17 @@ function cambiarMonedaInternacional(nuevaMoneda) {
 }
 
 // ==========================================
-// RENDERIZADO DE PRODUCTOS Y CATÁLOGO
+// RENDERIZAR INTERFAZ DE PRODUCTOS
 // ==========================================
 function renderizarProductos() {
   const container = document.getElementById('contenedor-productos');
   if (!container) return;
   container.innerHTML = '';
 
-  // Filtrar productos que correspondan al país actual
   const productosFiltrados = PRODUCTOS.filter(p => p.pais === estado.paisActual);
 
   if (productosFiltrados.length === 0) {
-    container.innerHTML = `<p class="text-center text-gray-400 py-8 text-sm">No hay productos disponibles para esta región todavía.</p>`;
+    container.innerHTML = `<p class="text-center text-gray-400 py-8 text-sm col-span-2">No hay productos disponibles para esta región todavía.</p>`;
     return;
   }
 
@@ -127,8 +193,8 @@ function renderizarProductos() {
           <p class="text-lg font-black text-amber-600 mb-4">${precioTexto}</p>
         </div>
         <div class="flex gap-2">
-          <button onclick="agregarAlCarrito('${prod.id}')" class="flex-1 bg-gray-900 text-white text-xs font-bold py-2.5 rounded-xl hover:bg-gray-800 transition-all">🛒 Agregar</button>
-          ${estado.rolActual !== 'revendedor' ? `<button onclick="seleccionarParaCombo('${prod.id}')" class="bg-amber-500 text-white text-xs font-bold px-3 py-2.5 rounded-xl hover:bg-amber-600 transition-all">➕ Combo</button>` : ''}
+          <button onclick="agregarAlCarrito('${prod.id}')" class="flex-1 bg-gray-900 text-white text-xs font-bold py-2.5 rounded-xl hover:bg-gray-800 transition-all cursor-pointer">🛒 Agregar</button>
+          ${estado.rolActual !== 'revendedor' ? `<button onclick="seleccionarParaCombo('${prod.id}')" class="bg-amber-500 text-white text-xs font-bold px-3 py-2.5 rounded-xl hover:bg-amber-600 transition-all cursor-pointer">➕ Combo</button>` : ''}
         </div>
       </div>
     `;
@@ -136,7 +202,7 @@ function renderizarProductos() {
 }
 
 // ==========================================
-// MANEJO DE CARRITO Y SELECCIÓN DE COMBOS
+// CARRITO Y LOGICA DE COMBOS
 // ==========================================
 function agregarAlCarrito(id) {
   const prod = PRODUCTOS.find(p => p.id === id);
@@ -155,7 +221,6 @@ function seleccionarParaCombo(id) {
   const prod = PRODUCTOS.find(p => p.id === id);
   if (!prod) return;
 
-  // Buscar un espacio vacío en el combo de 3 slots
   const slotLibre = estado.comboSeleccionado.findIndex(slot => slot === null);
   if (slotLibre !== -1) {
     estado.comboSeleccionado[slotLibre] = prod;
@@ -180,9 +245,6 @@ function cambiarCantidad(id, cambio) {
   renderizarCarrito();
 }
 
-// ==========================================
-// RENDERIZADO DEL PANEL DEL CARRITO DE COMPRAS
-// ==========================================
 function renderizarCarrito() {
   const container = document.getElementById('items-carrito');
   if (!container) return;
@@ -190,7 +252,6 @@ function renderizarCarrito() {
 
   let total = 0;
 
-  // 1. Renderizar ítems del carrito regular
   estado.carrito.forEach(item => {
     const precioUnidad = estado.rolActual === 'revendedor' ? item.producto.precioRevendedor : item.producto.precioCliente;
     const subtotalItem = precioUnidad * item.cantidad;
@@ -203,15 +264,14 @@ function renderizarCarrito() {
           <p class="text-amber-600 font-medium">${Monedas[estado.paisActual]}${subtotalItem.toLocaleString()}</p>
         </div>
         <div class="flex items-center gap-2 bg-white border border-gray-200 rounded-lg p-1">
-          <button onclick="cambiarCantidad('${item.producto.id}', -1)" class="w-5 h-5 font-bold flex items-center justify-center bg-gray-100 rounded-sm text-gray-600 hover:bg-gray-200">-</button>
+          <button onclick="cambiarCantidad('${item.producto.id}', -1)" class="w-5 h-5 font-bold flex items-center justify-center bg-gray-100 rounded-sm text-gray-600 hover:bg-gray-200 cursor-pointer">-</button>
           <span class="font-bold text-gray-700 min-w-4 text-center">${item.cantidad}</span>
-          <button onclick="cambiarCantidad('${item.producto.id}', 1)" class="w-5 h-5 font-bold flex items-center justify-center bg-gray-100 rounded-sm text-gray-600 hover:bg-gray-200">+</button>
+          <button onclick="cambiarCantidad('${item.producto.id}', 1)" class="w-5 h-5 font-bold flex items-center justify-center bg-gray-100 rounded-sm text-gray-600 hover:bg-gray-200 cursor-pointer">+</button>
         </div>
       </div>
     `;
   });
 
-  // 2. Renderizar ranuras del Combo de 3 Productos
   const pCombo = estado.comboSeleccionado.filter(p => p !== null).length;
   
   if (estado.rolActual !== 'revendedor') {
@@ -222,25 +282,22 @@ function renderizarCarrito() {
         comboHTML += `
           <div class="relative bg-white border border-amber-300 p-2 rounded-lg text-[10px] font-bold text-center text-amber-800 flex flex-col justify-between min-h-[50px]">
             <span>${prod.nombre}</span>
-            <button onclick="quitarDelCombo(${idx})" class="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center text-[8px] font-black shadow-xs">×</button>
+            <button onclick="quitarDelCombo(${idx})" class="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center text-[8px] font-black shadow-xs cursor-pointer">×</button>
           </div>
         `;
       } else {
         comboHTML += `
-          <div class="bg-dashed border-2 border-dashed border-gray-200 rounded-lg text-[10px] text-gray-400 flex items-center justify-center text-center p-2 min-h-[50px]">
-            Vacío
-          </div>
+          <div class="bg-dashed border-2 border-dashed border-gray-200 rounded-lg text-[10px] text-gray-400 flex items-center justify-center text-center p-2 min-h-[50px]">Vacío</div>
         `;
       }
     });
     
     comboHTML += `</div>`;
 
-    // Si el combo está completo (3 ítems), se suma el precio promocional directo de Firebase
     if (pCombo === 3) {
       total += COMBOS[estado.paisActual];
       comboHTML += `
-        <div class="mt-2 flex justify-between items-center text-xs bg-amber-500 text-white p-2 rounded-lg font-black animate-pulse">
+        <div class="mt-2 flex justify-between items-center text-xs bg-amber-500 text-white p-2 rounded-lg font-black">
           <span>¡Combo Activado con Éxito!</span>
           <span>${Monedas[estado.paisActual]}${COMBOS[estado.paisActual].toLocaleString()}</span>
         </div>
@@ -250,7 +307,6 @@ function renderizarCarrito() {
     container.innerHTML += comboHTML;
   }
 
-  // Actualizar el valor Neto Final en la Pantalla
   const elementoTotal = document.getElementById('total-carrito');
   if (elementoTotal) {
     elementoTotal.innerText = `${Monedas[estado.paisActual]}${total.toLocaleString()}`;
@@ -258,31 +314,7 @@ function renderizarCarrito() {
 }
 
 // ==========================================
-// VALIDACIÓN DE ROLES (CLIENTE / REVENDEDOR)
-// ==========================================
-function validarPinAcceso(pinIngresado) {
-  if (pinIngresado === PINES.admin) {
-    estado.rolActual = 'admin';
-    alert("👑 Modo Administrador Global Conectado.");
-    abrirPanelAdmin();
-    return;
-  }
-
-  // Comprobar si corresponde al PIN de revendedor de la región actual
-  if (pinIngresado === PINES[estado.paisActual]) {
-    estado.rolActual = 'revendedor';
-    alert(`💼 Modo Revendedor Autorizado (${estado.paisActual}) Activo.`);
-  } else {
-    estado.rolActual = 'cliente';
-    alert("👤 Acceso correcto como Cliente Final.");
-  }
-  
-  renderizarProductos();
-  renderizarCarrito();
-}
-
-// ==========================================
-// CONFIGURACIÓN FINAL DEL MENSAJE DE WHATSAPP
+// SALIDA Y CONFIGURACIÓN WHATSAPP
 // ==========================================
 function obtenerProductoWhatsApp() {
   const pCombo = estado.comboSeleccionado.filter(p => p !== null);
@@ -294,14 +326,12 @@ function obtenerProductoWhatsApp() {
   let mensaje = `👋 ¡Hola *Edwauge.Vip*! Me interesa adquirir los siguientes productos de Streaming:\n\n🌍 *Catálogo:* ${estado.paisActual}\n👤 *Perfil:* ${estado.rolActual || 'cliente'}\n-------------------------------------------\n`;
   let total = 0;
   
-  // 1. Listar productos del carrito regular en el texto
   estado.carrito.forEach(item => {
     const pU = estado.rolActual === 'revendedor' ? item.producto.precioRevendedor : item.producto.precioCliente;
     total += pU * item.cantidad; 
     mensaje += `📦 *${item.cantidad}x* ${item.producto.nombre} (${Monedas[estado.paisActual]}${(pU * item.cantidad).toLocaleString()})\n`;
   });
   
-  // 2. DETALLAR PRODUCTOS DEL COMBO ESPECIAL DE FORMA CORRECTA
   if (estado.rolActual !== 'revendedor' && pCombo.length === 3) { 
     total += COMBOS[estado.paisActual]; 
     mensaje += `\n🔥 *Súper Combo Especial (3 Productos):*\n`;
@@ -312,7 +342,5 @@ function obtenerProductoWhatsApp() {
   }
   
   mensaje += `-------------------------------------------\n💰 *TOTAL NETO A PAGAR:* ${Monedas[estado.paisActual]}${total.toLocaleString()}`;
-  
-  // Abrir API de WhatsApp hacia tu número comercial
   window.open(`https://api.whatsapp.com/send?phone=3022237839&text=${encodeURIComponent(mensaje)}`, '_blank');
 }
