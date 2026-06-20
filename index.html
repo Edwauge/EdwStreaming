@@ -38,18 +38,18 @@
 
   <div class="bg-white border-b border-gray-200 sticky top-[69px] z-30 shadow-xs">
     <div class="max-w-3xl mx-auto flex justify-around">
-      <button id="tab-CO" onclick="cambiarPais('CO')" class="flex-1 py-4 text-center font-bold text-sm sm:text-base border-b-2 border-yellow-500 text-yellow-600 transition-all">
+      <button id="tab-CO" onclick="chequearPestañaInternacional('CO')" class="flex-1 py-4 text-center font-bold text-sm sm:text-base border-b-2 border-yellow-500 text-yellow-600 transition-all">
         🇨🇴 Catálogo Colombia
       </button>
-      <button id="tab-MX" onclick="cambiarPais('MX')" class="flex-1 py-4 text-center font-bold text-sm sm:text-base border-b-2 border-transparent text-gray-400 hover:text-gray-700 transition-all">
+      <button id="tab-MX" onclick="chequearPestañaInternacional('MX')" class="flex-1 py-4 text-center font-bold text-sm sm:text-base border-b-2 border-transparent text-gray-400 hover:text-gray-700 transition-all">
         🇲🇽 Catálogo México
       </button>
-      <button id="tab-AR" onclick="cambiarPais('AR')" class="flex-1 py-4 text-center font-bold text-sm sm:text-base border-b-2 border-transparent text-gray-400 hover:text-gray-700 transition-all">
+      <button id="tab-AR" onclick="chequearPestañaInternacional('AR')" class="flex-1 py-4 text-center font-bold text-sm sm:text-base border-b-2 border-transparent text-gray-400 hover:text-gray-700 transition-all">
         🇦🇷 Catálogo Argentina
       </button>
-      <button id="tab-USDEUR" onclick="cambiarPais('USDEUR')" class="flex-1 py-4 text-center font-bold text-sm sm:text-base border-b-2 border-transparent text-gray-400 hover:text-gray-700 transition-all">
-         Catálogo USD-EUR
-      </button>
+      <button id="tab-US" onclick="chequearPestañaInternacional('US'); cambiarPais('USDEUR')" class="flex-1 py-4 text-center font-bold text-sm sm:text-base border-b-2 border-transparent text-gray-400 hover:text-gray-700 transition-all">
+  Catálogo USD-EUR
+</button>
     </div>
   </div>
 
