@@ -1,61 +1,210 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Edwauge.Vip - Streaming Panel</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-  <style>
-    @keyframes subtle-pulse {
-      0%, 100% { border-color: rgba(234, 179, 8, 0.3); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
-      50% { border-color: rgba(234, 179, 8, 0.8); box-shadow: 0 10px 15px -3px rgba(234, 179, 8, 0.1); }
-    }
-    .oferta-animada {
-      animation: subtle-pulse 3s infinite;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EdwStreaming - Catálogo Oficial</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    </style>
 </head>
-<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col font-sans select-none antialiased">
+<body class="bg-gray-50 min-h-screen flex flex-col justify-between">
 
-  <header class="bg-white/90 backdrop-blur border-b border-gray-200 sticky top-0 z-40 shadow-sm">
-    <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-      <div class="flex items-center space-x-2">
-        <span class="text-2xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-500">
-          EDWAUGE.VIP
-        </span>
-      </div>
-      <button onclick="abrirLoginAdmin()" class="bg-gray-100 hover:bg-yellow-100 text-gray-700 hover:text-yellow-800 text-xs font-bold px-4 py-2 rounded-xl border border-gray-200 hover:border-yellow-300 transition-all flex items-center space-x-2">
-        <i class="fa-solid fa-user-gear text-gray-500"></i>
-        <span>Admin</span>
-      </button>
-    </div>
-  </header>
+    <header class="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-xs">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+            <h1 class="text-xl sm:text-2xl font-black text-amber-500 tracking-wider cursor-pointer" onclick="volverASeleccionRol()">
+                EDWAUGE.VIP
+            </h1>
+            <button onclick="abrirLoginAdmin()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs sm:text-sm font-bold py-2 px-4 rounded-xl transition-all border border-gray-200 flex items-center gap-1.5 shadow-xs">
+                <i class="fa-solid fa-user-gear opacity-80"></i> Admin
+            </button>
+        </div>
+    </header>
 
-  <div class="bg-white border-b border-gray-200 sticky top-[69px] z-30 shadow-xs">
-    <div class="max-w-4xl mx-auto flex justify-around overflow-x-auto whitespace-nowrap">
-      <button id="tab-CO" onclick="cambiarPais('CO')" class="flex-1 py-4 px-3 text-center font-bold text-sm sm:text-base border-b-2 border-yellow-500 text-yellow-600 transition-all">
-        汇 Colombia
-      </button>
-      <button id="tab-MX" onclick="cambiarPais('MX')" class="flex-1 py-4 px-3 text-center font-bold text-sm sm:text-base border-b-2 border-transparent text-gray-400 hover:text-gray-700 transition-all">
-        🇲🇽 México
-      </button>
-      <button id="tab-AR" onclick="cambiarPais('AR')" class="flex-1 py-4 px-3 text-center font-bold text-sm sm:text-base border-b-2 border-transparent text-gray-400 hover:text-gray-700 transition-all">
-        🇦🇷 Argentina
-      </button>
-      <button id="tab-USDEUR" onclick="cambiarPais('USDEUR')" class="flex-1 py-4 px-3 text-center font-bold text-sm sm:text-base border-b-2 border-transparent text-gray-400 hover:text-gray-700 transition-all">
-        🌍 USD-EUR
-      </button>
-    </div>
-  </div>
+    <nav class="bg-white border-b border-gray-200 sticky top-16 z-30 shadow-xs">
+        <div class="max-w-3xl mx-auto flex justify-between">
+            <button id="tab-CO" onclick="cambiarPais('CO')" class="flex-1 py-4 px-2 text-center font-bold text-xs sm:text-base border-b-2 border-amber-500 text-amber-600 transition-all">
+                <span class="opacity-60 mr-1">CO</span> Catálogo Colombia
+            </button>
+            <button id="tab-MX" onclick="cambiarPais('MX')" class="flex-1 py-4 px-2 text-center font-bold text-xs sm:text-base border-b-2 border-transparent text-gray-400 hover:text-gray-700 transition-all">
+                <span class="opacity-60 mr-1">MX</span> Catálogo México
+            </button>
+            <button id="tab-AR" onclick="cambiarPais('AR')" class="flex-1 py-4 px-2 text-center font-bold text-xs sm:text-base border-b-2 border-transparent text-gray-400 hover:text-gray-700 transition-all">
+                <span class="opacity-60 mr-1">AR</span> Catálogo Argentina
+            </button>
+            <button id="tab-USDEUR" onclick="cambiarPais('USDEUR')" class="flex-1 py-4 px-2 text-center font-bold text-xs sm:text-base border-b-2 border-transparent text-gray-400 hover:text-gray-700 transition-all">
+                <i class="fa-solidxl fa-earth-americas text-xs opacity-70 mr-1"></i> Catálogo USD-EUR
+            </button>
+        </div>
+    </nav>
 
-  <main class="flex-grow max-w-7xl w-full mx-auto px-6 py-8">
-    
-    <div id="vista-seleccion-rol" class="max-w-md mx-auto my-16 bg-white border border-gray-200 rounded-3xl p-8 text-center shadow-xl">
-      <h3 class="text-lg font-bold mb-6 text-gray-700 tracking-tight">Selecciona tu tipo de perfil para continuar:</h3>
-      <div class="space-y-3">
-        <button onclick="seleccionarRol('cliente')" class="w-full bg-yellow-400/90 hover:bg-yellow-400 text-gray-900 font-extrabold py-4 rounded-2xl shadow-sm hover:shadow-md transition-all transform hover:-translate-y-0.5">
-          <i class="fa-solid fa-user text-sm mr-2 opacity-80"></i> Soy Cliente
-        </button>
-        <button onclick="abrirModalPinRol()" class="w-full bg-gray-50 hover:bg-gray-100 text-gray-700 font-bold py-4 rounded-2xl border border-gray-200 transition-all transform hover:-translate-y-0.5">
-          <i class="fa
+    <main class="max-w-7xl mx-auto px-4 py-8 flex-grow w-full">
+
+        <section id="vista-seleccion-rol" class="max-w-md mx-auto my-12 bg-white border border-gray-200 rounded-3xl p-8 shadow-xl text-center transition-all">
+            <h3 class="text-lg font-black text-gray-800 mb-6">Selecciona tu tipo de perfil para continuar:</h3>
+            <div class="space-y-4">
+                <button onclick="seleccionarRol('cliente')" class="w-full bg-amber-400 hover:bg-amber-500 text-gray-900 font-black py-4 px-6 rounded-2xl transition-all shadow-md flex items-center justify-center gap-2 text-base">
+                    <i class="fa-solid fa-user text-sm"></i> Soy Cliente
+                </button>
+                <button onclick="abrirModalPinRol()" class="w-full bg-gray-50 hover:bg-gray-100 text-gray-700 font-bold py-4 px-6 rounded-2xl transition-all border border-gray-200 flex items-center justify-center gap-2 text-base shadow-xs">
+                    <i class="fa-solid fa-handshake text-sm"></i> Soy Revendedor
+                </button>
+            </div>
+        </section>
+
+        <section id="vista-tienda" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <div class="lg:col-span-2 space-y-6">
+                <div class="flex items-center justify-between bg-white border border-gray-200 rounded-2xl px-5 py-3.5 shadow-xs">
+                    <div class="flex items-center gap-3">
+                        <span id="badge-pais" class="bg-amber-100 text-amber-800 font-black text-xs px-3 py-1.5 rounded-xl uppercase tracking-wider">País: CO</span>
+                        <span id="badge-rol" class="bg-gray-100 text-gray-700 font-black text-xs px-3 py-1.5 rounded-xl uppercase tracking-wider">Perfil: Cliente</span>
+                    </div>
+                    <button onclick="volverASeleccionRol()" class="text-xs text-gray-400 hover:text-red-500 font-bold transition-colors flex items-center gap-1">
+                        <i class="fa-solid fa-arrow-left-long"></i> Cambiar Perfil
+                    </button>
+                </div>
+
+                <div id="seccion-oferta-combo" class="bg-gradient-to-br from-amber-400 to-orange-400 rounded-3xl p-6 text-white shadow-md relative overflow-hidden">
+                    <div class="relative z-10">
+                        <span class="bg-white/20 text-white font-black text-[10px] px-2.5 py-1 rounded-full uppercase tracking-widest">Promoción Estrella</span>
+                        <h3 class="text-xl font-black mt-2 mb-1 tracking-tight">🔥 ¡Súper Combo de Streaming!</h3>
+                        <p class="text-xs text-white/90 mb-4">Arma tu paquete seleccionando exactamente 3 productos del catálogo marcados con el botón "Combo 3" por solo <span id="precio-combo-texto" class="font-black text-sm underline"></span></p>
+                        
+                        <div id="slots-combo" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 mb-2">
+                    <i class="fa-solid fa-sparkles text-amber-500 text-sm"></i>
+                    <h2 class="text-lg font-black text-gray-800 tracking-tight">Servicios Disponibles</h2>
+                </div>
+                <div id="contenedor-productos" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    </div>
+            </div>
+
+            <div class="lg:col-span-1">
+                <div class="bg-white border border-gray-200 rounded-3xl p-6 shadow-sm sticky top-44 space-y-4">
+                    <div class="flex items-center justify-between border-b border-gray-100 pb-3">
+                        <h3 class="text-base font-black text-gray-800 flex items-center gap-2">
+                            <i class="fa-solid fa-basket-shopping text-amber-500"></i> Tu Pedido
+                        </h3>
+                        <span class="bg-gray-100 text-gray-600 font-bold text-2xl px-2.5 py-0.5 rounded-lg text-xs">Carrito</span>
+                    </div>
+
+                    <div id="items-carrito" class="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+                        </div>
+
+                    <div class="border-t border-gray-100 pt-4 space-y-2.5 text-xs text-gray-500">
+                        <div id="desglose-oferta" class="hidden flex justify-between text-emerald-600 font-bold">
+                            <span>Descuento Combo Especial:</span>
+                            <span id="desglose-ahorro">-$0</span>
+                        </div>
+                        <div class="flex justify-between items-center pt-1">
+                            <span class="text-sm font-bold text-gray-800">Total a Pagar:</span>
+                            <span id="total-carrito-texto" class="text-xl font-black text-gray-950">COP $0</span>
+                        </div>
+                    </div>
+
+                    <button onclick="obtenerProductoWhatsApp()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-black py-3.5 px-4 rounded-2xl transition-all shadow-md flex items-center justify-center gap-2 text-sm mt-2">
+                        <i class="fa-brands fa-whatsapp text-lg"></i> Solicitar por WhatsApp
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section id="vista-admin" class="hidden space-y-8 bg-white border border-gray-200 rounded-3xl p-6 shadow-sm">
+            <div class="flex items-center justify-between border-b border-gray-200 pb-4">
+                <div>
+                    <h2 class="text-xl font-black text-gray-900 tracking-tight">⚙️ Panel de Gestión Administrativa</h2>
+                    <p class="text-xs text-gray-400">Modifica accesos, valores promocionales y base de datos local.</p>
+                </div>
+                <button onclick="cerrarAdmin()" class="bg-gray-800 hover:bg-gray-900 text-white font-bold text-xs py-2 px-4 rounded-xl transition-all">
+                    Salir del Panel
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-gray-50 p-5 rounded-2xl border border-gray-200 space-y-4">
+                    <h3 class="text-sm font-black text-gray-800 border-b pb-2"><i class="fa-solid fa-key mr-1.5 opacity-70"></i> Contraseñas de Acceso (PIN)</h3>
+                    <div class="grid grid-cols-2 gap-3 text-xs">
+                        <div><label class="block font-bold text-gray-500 mb-1">Clave Master Admin:</label><input id="input-pin-admin" type="text" class="w-full border p-2 rounded-xl font-mono text-center font-bold"></div>
+                        <div><label class="block font-bold text-gray-500 mb-1">PIN Colombia (CO):</label><input id="input-pin-co" type="text" class="w-full border p-2 rounded-xl font-mono text-center font-bold"></div>
+                        <div><label class="block font-bold text-gray-500 mb-1">PIN México (MX):</label><input id="input-pin-mx" type="text" class="w-full border p-2 rounded-xl font-mono text-center font-bold"></div>
+                        <div><label class="block font-bold text-gray-500 mb-1">PIN Argentina (AR):</label><input id="input-pin-ar" type="text" class="w-full border p-2 rounded-xl font-mono text-center font-bold"></div>
+                        <div class="col-span-2"><label class="block font-bold text-gray-500 mb-1">PIN USD-EUR:</label><input id="input-pin-usdeur" type="text" class="w-full border p-2 rounded-xl font-mono text-center font-bold"></div>
+                    </div>
+                    <button onclick="guardarConfiguracionPines()" class="w-full bg-amber-400 hover:bg-amber-500 text-gray-900 font-bold text-xs py-2.5 px-4 rounded-xl transition-all">Actualizar Seguridad</button>
+                </div>
+
+                <div class="bg-gray-50 p-5 rounded-2xl border border-gray-200 space-y-4">
+                    <h3 class="text-sm font-black text-gray-800 border-b pb-2"><i class="fa-solid fa-tags mr-1.5 opacity-70"></i> Tarifas Súper Combo (3 Productos)</h3>
+                    <div class="grid grid-cols-2 gap-3 text-xs">
+                        <div><label class="block font-bold text-gray-500 mb-1">Precio Combo CO:</label><input id="input-combo-co" type="number" class="w-full border p-2 rounded-xl font-bold"></div>
+                        <div><label class="block font-bold text-gray-500 mb-1">Precio Combo MX:</label><input id="input-combo-mx" type="number" class="w-full border p-2 rounded-xl font-bold"></div>
+                        <div><label class="block font-bold text-gray-500 mb-1">Precio Combo AR:</label><input id="input-combo-ar" type="number" class="w-full border p-2 rounded-xl font-bold"></div>
+                        <div><label class="block font-bold text-gray-500 mb-1">Precio Combo USD-EUR:</label><input id="input-combo-usdeur" type="number" class="w-full border p-2 rounded-xl font-bold"></div>
+                    </div>
+                    <button onclick="guardarPreciosCombo()" class="w-full bg-amber-400 hover:bg-amber-500 text-gray-900 font-bold text-xs py-2.5 px-4 rounded-xl transition-all">Actualizar Tarifas Combo</button>
+                </div>
+            </div>
+
+            <div class="bg-gray-50 p-6 rounded-2xl border border-gray-200 space-y-4">
+                <h3 class="text-sm font-black text-gray-800 border-b pb-2"><i class="fa-solid fa-box-open mr-1.5 opacity-70"></i> Añadir / Modificar Cuenta de Streaming</h3>
+                <input type="hidden" id="form-product-index">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                    <div class="sm:col-span-2"><label class="block font-bold text-gray-500 mb-1">Nombre Completo del Producto (Ej: Netflix 1 Perfil):</label><input id="form-product-nombre" type="text" class="w-full border p-2.5 rounded-xl font-bold"></div>
+                    <div>
+                        <label class="block font-bold text-gray-500 mb-1">Plataforma / Categoría:</label>
+                        <select id="form-product-categoria" class="w-full border p-2.5 rounded-xl font-bold bg-white">
+                            <option value="Netflix">Netflix</option><option value="Spotify">Spotify</option><option value="Disney+">Disney+</option>
+                            <option value="Paramount+">Paramount+</option><option value="HBO Max">HBO Max</option><option value="Crunchyroll">Crunchyroll</option>
+                            <option value="Combos">Combos Especiales</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-bold text-gray-500 mb-1">Asignar a Catálogo:</label>
+                        <select id="form-product-pais" class="w-full border p-2.5 rounded-xl font-bold bg-white">
+                            <option value="CO">Colombia (CO)</option><option value="MX">México (MX)</option><option value="AR">Argentina (AR)</option><option value="USDEUR">Global (USD-EUR)</option>
+                        </select>
+                    </div>
+                    <div><label class="block font-bold text-gray-500 mb-1">Precio Final Cliente:</label><input id="form-product-precio-cliente" type="number" class="w-full border p-2.5 rounded-xl font-bold"></div>
+                    <div><label class="block font-bold text-gray-500 mb-1">Precio Distribuidor/Revendedor:</label><input id="form-product-precio-revendedor" type="number" class="w-full border p-2.5 rounded-xl font-bold"></div>
+                </div>
+                <div class="flex items-center gap-2 pt-2 text-xs">
+                    <input type="checkbox" id="form-product-agotado" class="w-4 h-4 rounded border-gray-300 accent-amber-500">
+                    <label for="form-product-agotado" class="font-black text-red-600 cursor-pointer">Marcar este artículo como Agotado (Sin Stock Temporal)</label>
+                </div>
+                <div class="flex gap-2 justify-end pt-2 text-xs">
+                    <button onclick="limpiarFormularioProducto()" class="bg-gray-200 text-gray-700 font-bold py-2.5 px-5 rounded-xl hover:bg-gray-300 transition-all">Limpiar Campos</button>
+                    <button onclick="guardarProducto()" class="bg-emerald-500 text-white font-black py-2.5 px-6 rounded-xl hover:bg-emerald-600 transition-all shadow-xs">Guardar Cuenta en Inventario</button>
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <h3 class="text-sm font-black text-gray-800"><i class="fa-solid fa-list mr-1.5 opacity-70"></i> Catálogo Completo en Base de Datos</h3>
+                <div class="overflow-x-auto rounded-2xl border border-gray-200 shadow-xs">
+                    <table class="w-full text-left border-collapse bg-white">
+                        <thead>
+                            <tr class="bg-gray-100 text-gray-500 text-[11px] font-black uppercase border-b border-gray-200">
+                                <th class="p-3">Región</th><th class="p-3">Categoría</th><th class="p-3">Nombre del Producto</th><th class="p-3">Estado</th><th class="p-3">P. Cliente</th><th class="p-3">P. Revendedor</th><th class="p-3 text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-admin-productos" class="divide-y divide-gray-100">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-white border-t border-gray-200 py-4 text-center text-xs text-gray-400 font-bold shadow-inner">
+        &copy; 2026 EdwStreaming. Todos los derechos reservados.
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
