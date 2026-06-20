@@ -7,9 +7,17 @@ const defaultProductos = [
   { nombre: "Netflix - 1 Perfil UHD Premium (Mes)", categoria: "Netflix", pais: "MX", precioCliente: 89, precioRevendedor: 65, agotado: false }
 ];
 
-let PINES = JSON.parse(localStorage.getItem('ev_pines')) || defaultPines;
-let COMBOS = JSON.parse(localStorage.getItem('ev_combos')) || defaultCombos;
-let PRODUCTOS = JSON.parse(localStorage.getItem('ev_productos')) || defaultProductos;
+let PINES = defaultPines;
+let COMBOS = defaultCombos;
+let PRODUCTOS = defaultProductos;
+
+try {
+  PINES = JSON.parse(localStorage.getItem('ev_pines')) || defaultPines;
+  COMBOS = JSON.parse(localStorage.getItem('ev_combos')) || defaultCombos;
+  PRODUCTOS = JSON.parse(localStorage.getItem('ev_productos')) || defaultProductos;
+} catch (e) {
+  console.error("Error cargando LocalStorage, usando defaults", e);
+}
 
 let estado = { paisActual: 'CO', rolActual: null, carrito: [], comboSeleccionado: [null, null, null] };
 const Monedas = { CO: 'COP $', MX: 'MXN $', AR: 'ARS $', USDEUR: 'USD $' };
@@ -21,9 +29,11 @@ window.onload = function() {
 };
 
 function guardarEnLocalStorage() {
-  localStorage.setItem('ev_pines', JSON.stringify(PINES));
-  localStorage.setItem('ev_combos', JSON.stringify(COMBOS));
-  localStorage.setItem('ev_productos', JSON.stringify(PRODUCTOS));
+  try {
+    localStorage.setItem('ev_pines', JSON.stringify(PINES));
+    localStorage.setItem('ev_combos', JSON.stringify(COMBOS));
+    localStorage.setItem('ev_productos', JSON.stringify(PRODUCTOS));
+  } catch(e) { console.error(e); }
 }
 
 function cambiarPais(codigoPais) {
@@ -46,15 +56,18 @@ function cambiarPais(codigoPais) {
 function seleccionarRol(rol) { estado.rolActual = rol; actualizarVistaVenta(); }
 
 function abrirModalPinRol() { 
-  document.getElementById('modal-pin-rol-pais').innerText = estado.paisActual === 'CO' ? 'Colombia' : estado.paisActual === 'MX' ? 'México' : estado.paisActual === 'AR' ? 'Argentina' : 'Internacional'; 
-  document.getElementById('input-modal-pin-rol').value = ''; 
-  document.getElementById('modal-pin-rol').classList.remove('hidden'); 
+  const txt = document.getElementById('modal-pin-rol-pais');
+  if(txt) txt.innerText = estado.paisActual === 'CO' ? 'Colombia' : estado.paisActual === 'MX' ? 'México' : estado.paisActual === 'AR' ? 'Argentina' : 'Internacional'; 
+  const inp = document.getElementById('input-modal-pin-rol');
+  if(inp) inp.value = ''; 
+  document.getElementById('modal-pin-rol')?.classList.remove('hidden'); 
 }
 
-function cerrarModalPinRol() { document.getElementById('modal-pin-rol').classList.add('hidden'); }
+function cerrarModalPinRol() { document.getElementById('modal-pin-rol')?.classList.add('hidden'); }
 
 function validarPinRol() {
-  if(document.getElementById('input-modal-pin-rol').value === PINES[estado.paisActual]) { cerrarModalPinRol(); seleccionarRol('revendedor'); }
+  const inp = document.getElementById('input-modal-pin-rol');
+  if(inp && inp.value === PINES[estado.paisActual]) { cerrarModalPinRol(); seleccionarRol('revendedor'); }
   else { alert("❌ Código PIN incorrecto para este catálogo."); }
 }
 
@@ -63,19 +76,38 @@ function volverASeleccionRol() { estado.rolActual = null; estado.carrito = []; e
 function actualizarVistaVenta() {
   const divSeleccion = document.getElementById('vista-seleccion-rol');
   const divTienda = document.getElementById('vista-tienda');
-  document.getElementById('vista-admin').classList.add('hidden');
-  if (!estado.rolActual) { divSeleccion.classList.remove('hidden'); divTienda.classList.add('hidden'); return; }
-  divSeleccion.classList.add('hidden'); divTienda.classList.remove('hidden');
-  document.getElementById('badge-pais').innerText = `País: ${estado.paisActual === 'USDEUR' ? 'USD-EUR' : estado.paisActual}`;
-  document.getElementById('badge-rol').innerText = `Perfil: ${estado.rolActual.toUpperCase()}`;
+  const divAdmin = document.getElementById('vista-admin');
+  
+  if(divAdmin) divAdmin.classList.add('hidden');
+  if (!estado.rolActual) { 
+    if(divSeleccion) divSeleccion.classList.remove('hidden'); 
+    if(divTienda) divTienda.classList.add('hidden'); 
+    return; 
+  }
+  if(divSeleccion) divSeleccion.classList.add('hidden'); 
+  if(divTienda) divTienda.classList.remove('hidden');
+  
+  const bPais = document.getElementById('badge-pais');
+  const bRol = document.getElementById('badge-rol');
+  if(bPais) bPais.innerText = `País: ${estado.paisActual === 'USDEUR' ? 'USD-EUR' : estado.paisActual}`;
+  if(bRol) bRol.innerText = `Perfil: ${estado.rolActual.toUpperCase()}`;
+  
   const seccionCombo = document.getElementById('seccion-oferta-combo');
-  if (estado.rolActual === 'cliente') { seccionCombo.classList.remove('hidden'); document.getElementById('precio-combo-texto').innerText = `${Monedas[estado.paisActual]}${COMBOS[estado.paisActual].toLocaleString()}`; renderizarSlotsCombo(); }
-  else { seccionCombo.classList.add('hidden'); }
+  if (estado.rolActual === 'cliente') { 
+    if(seccionCombo) seccionCombo.classList.remove('hidden'); 
+    const txtCombo = document.getElementById('precio-combo-texto');
+    if(txtCombo) txtCombo.innerText = `${Monedas[estado.paisActual]}${COMBOS[estado.paisActual].toLocaleString()}`; 
+    renderizarSlotsCombo(); 
+  } else { 
+    if(seccionCombo) seccionCombo.classList.add('hidden'); 
+  }
   renderizarCatalogoProductos(); renderizarCarrito();
 }
 
 function renderizarSlotsCombo() {
-  const container = document.getElementById('slots-combo'); container.innerHTML = '';
+  const container = document.getElementById('slots-combo'); 
+  if(!container) return;
+  container.innerHTML = '';
   for (let i = 0; i < 3; i++) {
     const item = estado.comboSeleccionado[i];
     container.innerHTML += item ? `<div class="bg-yellow-50 border border-yellow-300 rounded-xl p-3 flex flex-col justify-between text-left transition-all"><span class="text-xs text-yellow-800 font-bold block mb-1 truncate">${item.nombre}</span><button onclick="removerItemCombo(${i})" class="text-left text-red-500 hover:text-red-700 text-xs font-bold flex items-center gap-1 mt-1"><i class="fa-solid fa-trash-can text-[10px]"></i> Quitar</button></div>` : `<div class="bg-gray-50 border border-dashed border-gray-300 rounded-xl p-4 flex flex-col items-center justify-center text-center text-gray-400 text-xs"><i class="fa-solid fa-layer-group text-base mb-1 text-gray-300"></i><span>Slot ${i + 1} libre</span></div>`;
@@ -83,7 +115,9 @@ function renderizarSlotsCombo() {
 }
 
 function renderizarCatalogoProductos() {
-  const container = document.getElementById('contenedor-productos'); container.innerHTML = '';
+  const container = document.getElementById('contenedor-productos'); 
+  if(!container) return;
+  container.innerHTML = '';
   const filtrados = PRODUCTOS.filter(p => p.pais === estado.paisActual);
   if(filtrados.length === 0) { container.innerHTML = `<p class="text-xs text-gray-400 col-span-2 py-6 text-center bg-white border border-gray-200 rounded-2xl shadow-xs">No hay productos registrados en este catálogo aún.</p>`; return; }
   filtrados.forEach((prod) => {
@@ -111,7 +145,9 @@ function agregarAlCarrito(idx) {
 function cambiarCantidadCarrito(idx, delta) { estado.carrito[idx].cantidad += delta; if(estado.carrito[idx].cantidad <= 0) estado.carrito.splice(idx, 1); renderizarCarrito(); }
 
 function renderizarCarrito() {
-  const container = document.getElementById('items-carrito'); container.innerHTML = '';
+  const container = document.getElementById('items-carrito'); 
+  if(!container) return;
+  container.innerHTML = '';
   let total = 0;
   estado.carrito.forEach((item, index) => {
     const pU = estado.rolActual === 'cliente' ? item.producto.precioCliente : item.producto.precioRevendedor;
@@ -121,10 +157,22 @@ function renderizarCarrito() {
   const pCombo = estado.comboSeleccionado.filter(p => p !== null).length;
   if (estado.rolActual === 'cliente' && pCombo > 0) {
     let pNormal = 0; let names = []; estado.comboSeleccionado.forEach(p => { if(p){ pNormal += p.precioCliente; names.push(p.nombre); }});
-    if (pCombo === 3) { total += COMBOS[estado.paisActual]; document.getElementById('desglose-oferta').classList.remove('hidden'); document.getElementById('desglose-ahorro').innerText = `-${Monedas[estado.paisActual]}${(pNormal - COMBOS[estado.paisActual]).toLocaleString()}`; container.innerHTML += `<div class="bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-300 p-3 rounded-xl text-xs shadow-xs"><div class="flex justify-between items-center mb-1"><span class="font-black text-yellow-800">Combo Especial Activado</span><span class="font-black text-yellow-700">${Monedas[estado.paisActual]}${COMBOS[estado.paisActual].toLocaleString()}</span></div></div>`; }
-    else { total += pNormal; document.getElementById('desglose-oferta').classList.add('hidden'); container.innerHTML += `<div class="bg-gray-50 border border-dashed border-gray-300 p-3 rounded-xl text-xs text-gray-400">Combo Especial (${pCombo}/3)</div>`; }
+    const dOferta = document.getElementById('desglose-oferta');
+    const dAhorro = document.getElementById('desglose-ahorro');
+    if (pCombo === 3) { 
+      total += COMBOS[estado.paisActual]; 
+      if(dOferta) dOferta.classList.remove('hidden'); 
+      if(dAhorro) dAhorro.innerText = `-${Monedas[estado.paisActual]}${(pNormal - COMBOS[estado.paisActual]).toLocaleString()}`; 
+      container.innerHTML += `<div class="bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-300 p-3 rounded-xl text-xs shadow-xs"><div class="flex justify-between items-center mb-1"><span class="font-black text-yellow-800">Combo Especial Activado</span><span class="font-black text-yellow-700">${Monedas[estado.paisActual]}${COMBOS[estado.paisActual].toLocaleString()}</span></div></div>`; 
+    }
+    else { 
+      total += pNormal; 
+      if(dOferta) dOferta.classList.add('hidden'); 
+      container.innerHTML += `<div class="bg-gray-50 border border-dashed border-gray-300 p-3 rounded-xl text-xs text-gray-400">Combo Especial (${pCombo}/3)</div>`; 
+    }
   }
-  document.getElementById('total-carrito-texto').innerText = `${Monedas[estado.paisActual]}${total.toLocaleString()}`;
+  const txtTotal = document.getElementById('total-carrito-texto');
+  if(txtTotal) txtTotal.innerText = `${Monedas[estado.paisActual]}${total.toLocaleString()}`;
 }
 
 function obtenerProductoWhatsApp() {
@@ -141,12 +189,24 @@ function obtenerProductoWhatsApp() {
   window.open(`https://api.whatsapp.com/send?phone=3022237839&text=${encodeURIComponent(mensaje)}`, '_blank');
 }
 
-function abrirLoginAdmin() { document.getElementById('input-modal-pin-admin').value = ''; document.getElementById('modal-pin-admin').classList.remove('hidden'); }
-function cerrarLoginAdmin() { document.getElementById('modal-pin-admin').classList.add('hidden'); }
-function validarPinAdmin() { if(document.getElementById('input-modal-pin-admin').value === PINES.admin) { cerrarLoginAdmin(); document.getElementById('vista-seleccion-rol').classList.add('hidden'); document.getElementById('vista-tienda').classList.add('hidden'); document.getElementById('vista-admin').classList.remove('hidden'); renderizarTablaAdminProductos(); } else { alert("❌ PIN Inválido."); }}
-function cerrarAdmin() { document.getElementById('vista-admin').classList.add('hidden'); actualizarVistaVenta(); }
+function abrirLoginAdmin() { 
+  const inp = document.getElementById('input-modal-pin-admin');
+  if(inp) inp.value = ''; 
+  document.getElementById('modal-pin-admin')?.classList.remove('hidden'); 
+}
+function cerrarLoginAdmin() { document.getElementById('modal-pin-admin')?.classList.add('hidden'); }
+function validarPinAdmin() { 
+  const inp = document.getElementById('input-modal-pin-admin');
+  if(inp && inp.value === PINES.admin) { 
+    cerrarLoginAdmin(); 
+    document.getElementById('vista-seleccion-rol')?.classList.add('hidden'); 
+    document.getElementById('vista-tienda')?.classList.add('hidden'); 
+    document.getElementById('vista-admin')?.classList.remove('hidden'); 
+    renderizarTablaAdminProductos(); 
+  } else { alert("❌ PIN Inválido."); }
+}
+function cerrarAdmin() { document.getElementById('vista-admin')?.classList.add('hidden'); actualizarVistaVenta(); }
 
-// CORRECCIÓN SEGURO: Valida la existencia de cada elemento antes de asignarle valor para evitar congelamientos si falta en el HTML
 function sincronizarCamposAdmin() {
   const elements = {
     'input-pin-admin': PINES.admin, 'input-pin-co': PINES.CO, 'input-pin-mx': PINES.MX, 'input-pin-ar': PINES.AR, 'input-pin-usdeur': PINES.USDEUR,
@@ -228,7 +288,9 @@ function limpiarFormularioProducto() {
 }
 
 function renderizarTablaAdminProductos() {
-  const tbody = document.getElementById('tabla-admin-productos'); tbody.innerHTML = '';
+  const tbody = document.getElementById('tabla-admin-productos'); 
+  if(!tbody) return;
+  tbody.innerHTML = '';
   if (PRODUCTOS.length === 0) { tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-gray-400">No hay productos.</td></tr>`; return; }
   PRODUCTOS.forEach((prod, index) => {
     tbody.innerHTML += `<tr class="hover:bg-gray-50 text-gray-700"><td class="p-3.5 text-xs font-bold font-mono text-yellow-600">${prod.pais}</td><td class="p-3.5"><span class="bg-gray-100 text-gray-600 text-[10px] uppercase font-black px-2 py-0.5 rounded">${prod.categoria}</span></td><td class="p-3.5 font-bold text-gray-800 text-xs">${prod.nombre}</td><td class="p-3.5">${prod.agotado ? '<span class="bg-red-50 text-red-600 border border-red-200 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase">Agotado</span>' : '<span class="bg-emerald-50 text-emerald-600 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase">Disponible</span>'}</td><td class="p-3.5 text-xs font-black">${Monedas[prod.pais] || 'USD $'}${prod.precioCliente.toLocaleString()}</td><td class="p-3.5 text-xs font-black">${Monedas[prod.pais] || 'USD $'}${prod.precioRevendedor.toLocaleString()}</td><td class="p-3.5 text-center"><button onclick="editarProducto(${index})" class="bg-gray-100 hover:bg-yellow-100 text-gray-600 text-xs font-bold py-1 px-3 rounded-lg border border-gray-200">Editar</button> <button onclick="eliminarProducto(${index})" class="bg-red-50 text-red-500 text-xs font-bold py-1 px-3 rounded-lg border border-red-200">Borrar</button></td></tr>`;
