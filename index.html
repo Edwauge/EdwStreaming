@@ -155,8 +155,8 @@
             <div class="bg-gray-50 p-6 rounded-2xl border border-gray-200 space-y-4">
                 <h3 class="text-sm font-black text-gray-800 border-b pb-2"><i class="fa-solid fa-box-open mr-1.5 opacity-70"></i> Añadir / Modificar Cuenta de Streaming</h3>
                 <input type="hidden" id="form-product-index">
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-                    <div class="sm:col-span-2"><label class="block font-bold text-gray-500 mb-1">Nombre Completo del Producto (Ej: Netflix 1 Perfil):</label><input id="form-product-nombre" type="text" class="w-full border p-2.5 rounded-xl font-bold"></div>
+                <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 text-xs">
+                    <div class="sm:col-span-2"><label class="block font-bold text-gray-500 mb-1">Nombre del Producto:</label><input id="form-product-nombre" type="text" class="w-full border p-2.5 rounded-xl font-bold"></div>
                     <div>
                         <label class="block font-bold text-gray-500 mb-1">Plataforma / Categoría:</label>
                         <select id="form-product-categoria" class="w-full border p-2.5 rounded-xl font-bold bg-white">
@@ -171,12 +171,24 @@
                     </div>
                     <div>
                         <label class="block font-bold text-gray-500 mb-1">Asignar a Catálogo:</label>
-                        <select id="form-product-pais" class="w-full border p-2.5 rounded-xl font-bold bg-white">
-                            <option value="CO">Colombia (CO)</option><option value="MX">México (MX)</option><option value="AR">Argentina (AR)</option><option value="USDEUR">Global (USD-EUR)</option>
+                        <select id="form-product-pais" onchange="evaluarMonedaEspecifica()" class="w-full border p-2.5 rounded-xl font-bold bg-white">
+                            <option value="CO">Colombia (CO)</option>
+                            <option value="MX">México (MX)</option>
+                            <option value="AR">Argentina (AR)</option>
+                            <option value="USDEUR">Global (USD-EUR)</option>
                         </select>
                     </div>
+                    
+                    <div id="wrapper-moneda-especifica" class="hidden">
+                        <label class="block font-bold text-amber-600 mb-1"><i class="fa-solid fa-coins"></i> Moneda Cobro:</label>
+                        <select id="form-product-moneda" class="w-full border border-amber-300 p-2.5 rounded-xl font-black bg-amber-50">
+                            <option value="USD">USD ($)</option>
+                            <option value="EUR">EUR (€)</option>
+                        </select>
+                    </div>
+                    
                     <div><label class="block font-bold text-gray-500 mb-1">Precio Final Cliente:</label><input id="form-product-precio-cliente" type="number" class="w-full border p-2.5 rounded-xl font-bold"></div>
-                    <div><label class="block font-bold text-gray-500 mb-1">Precio Distribuidor/Revendedor:</label><input id="form-product-precio-revendedor" type="number" class="w-full border p-2.5 rounded-xl font-bold"></div>
+                    <div><label class="block font-bold text-gray-500 mb-1">Precio Distribuidor:</label><input id="form-product-precio-revendedor" type="number" class="w-full border p-2.5 rounded-xl font-bold"></div>
                 </div>
                 <div class="flex items-center gap-2 pt-2 text-xs">
                     <input type="checkbox" id="form-product-agotado" class="w-4 h-4 rounded border-gray-300 accent-amber-500">
@@ -206,7 +218,7 @@
     </main>
 
     <div id="modal-seguridad" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-xs transition-opacity">
-        <div class="bg-white border border-gray-200 w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4 relative animate-in fade-in zoom-in-95 duration-150">
+        <div class="bg-white border border-gray-200 w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4 relative">
             <div class="text-center space-y-1">
                 <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center text-xl mx-auto mb-2">
                     <i id="modal-seguridad-icono" class="fa-solid fa-shield-halved"></i>
