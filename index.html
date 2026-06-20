@@ -1,300 +1,318 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Edwauge.Vip - Streaming Panel</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+// ==========================================
+// CONFIGURACIÓN DE TU BASE DE DATOS EN LA NUBE
+// ==========================================
+const firebaseConfig = {
+  databaseURL: "https://edwstreaming-eba93-default-rtdb.firebaseio.com/" 
+};
+
+// Inicializar Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// PINES DE ACCESO (Añadido USDEUR con PIN 5566)
+let PINES = { admin: "3859", CO: "2233", MX: "3344", AR: "4455", USDEUR: "5566" };
+
+// PRECIOS BASE DE COMBOS POR PAÍS/REGIÓN
+let COMBOS = { CO: 35000, MX: 199, AR: 2500, USDEUR: 9.99 };
+let PRODUCTOS = [];
+
+// ESTADO GLOBAL DE LA APLICACIÓN
+let estado = { 
+  paisActual: 'CO', 
+  rolActual: null, 
+  carrito: [], 
+  comboSeleccionado: [null, null, null],
+  monedaGlobalUS: 'USD' // Controla si la pestaña internacional muestra USD o EUR
+};
+
+// SÍMBOLOS DE MONEDAS DINÁMICOS
+const Monedas = { 
+  CO: 'COP $', 
+  MX: 'MXN $', 
+  AR: 'ARS $',
+  get USDEUR() { return estado.monedaGlobalUS === 'USD' ? 'USD $' : 'EUR €'; }
+};
+
+// ==========================================
+// ESCUCHAR CAMBIOS EN TIEMPO REAL DESDE LA NUBE
+// ==========================================
+db.ref().on('value', (snapshot) => {
+  const data = snapshot.val();
+  if (data) {
+    // Si la base de datos tiene productos guardados, los cargamos
+    PRODUCTOS = data.productos ? Object.values(data.productos) : [];
+    // Recargar la interfaz de forma automática
+    renderizarProductos();
+    renderizarCarrito();
+  }
+});
+
+// ==========================================
+// LÓGICA DE NAVEGACIÓN Y CAMBIO DE PAÍS
+// ==========================================
+function cambiarPais(pais) {
+  estado.paisActual = pais;
+  estado.carrito = []; // Limpiar carrito al cambiar de región para evitar mezclas
+  estado.comboSeleccionado = [null, null, null];
   
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  // Controlar visualmente las pestañas activas
+  document.querySelectorAll('.tab-button').forEach(btn => {
+    btn.classList.remove('border-amber-500', 'text-amber-600');
+    btn.classList.add('border-transparent', 'text-gray-400');
+  });
+  
+  const botonActivo = document.getElementById(`tab-${pais}`);
+  if (botonActivo) {
+    botonActivo.classList.remove('border-transparent', 'text-gray-400');
+    botonActivo.classList.add('border-amber-500', 'text-amber-600');
+  }
 
-  <style>
-    @keyframes subtle-pulse {
-      0%, 100% { border-color: rgba(234, 179, 8, 0.3); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
-      50% { border-color: rgba(234, 179, 8, 0.8); box-shadow: 0 10px 15px -3px rgba(234, 179, 8, 0.1); }
-    }
-    .oferta-animada {
-      animation: subtle-pulse 3s infinite;
-    }
-  </style>
-</head>
-<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col font-sans select-none antialiased">
+  // Comprobar si se activa el selector de monedas USD/EUR
+  chequearPestañaInternacional(pais);
+  renderizarProductos();
+  renderizarCarrito();
+}
 
-  <header class="bg-white/90 backdrop-blur border-b border-gray-200 sticky top-0 z-40 shadow-sm">
-    <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-      <div class="flex items-center space-x-2">
-        <span class="text-2xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-500">
-          EDWAUGE.VIP
-        </span>
+// Muestra u oculta los botones de USD/EUR de forma limpia
+function chequearPestañaInternacional(pais) {
+  const contenedorFiltroMoneda = document.getElementById('selector-moneda-us');
+  if (!contenedorFiltroMoneda) return;
+
+  if (pais === 'USDEUR') {
+    contenedorFiltroMoneda.innerHTML = `
+      <div class="flex justify-center gap-4 my-4 p-2 bg-gray-50 rounded-xl border border-gray-100 max-w-xs mx-auto shadow-xs">
+        <button onclick="cambiarMonedaInternacional('USD')" class="flex-1 py-2 text-xs font-black rounded-lg transition-all ${estado.monedaGlobalUS === 'USD' ? 'bg-amber-500 text-white shadow-md scale-105' : 'bg-white text-gray-700 border border-gray-200'}">Ver en USD ($)</button>
+        <button onclick="cambiarMonedaInternacional('EUR')" class="flex-1 py-2 text-xs font-black rounded-lg transition-all ${estado.monedaGlobalUS === 'EUR' ? 'bg-amber-500 text-white shadow-md scale-105' : 'bg-white text-gray-700 border border-gray-200'}">Ver en EUR (€)</button>
       </div>
-      <button onclick="abrirLoginAdmin()" class="bg-gray-100 hover:bg-yellow-100 text-gray-700 hover:text-yellow-800 text-xs font-bold px-4 py-2 rounded-xl border border-gray-200 hover:border-yellow-300 transition-all flex items-center space-x-2">
-        <i class="fa-solid fa-user-gear text-gray-500"></i>
-        <span>Admin</span>
-      </button>
-    </div>
-  </header>
+    `;
+  } else {
+    contenedorFiltroMoneda.innerHTML = '';
+  }
+}
 
-  <div class="bg-white border-b border-gray-200 sticky top-[69px] z-30 shadow-xs">
-    <div class="max-w-3xl mx-auto flex justify-around">
-      <button id="tab-CO" onclick="chequearPestañaInternacional('CO')" class="flex-1 py-4 text-center font-bold text-sm sm:text-base border-b-2 border-yellow-500 text-yellow-600 transition-all">
-        🇨🇴 Catálogo Colombia
-      </button>
-      <button id="tab-MX" onclick="chequearPestañaInternacional('MX')" class="flex-1 py-4 text-center font-bold text-sm sm:text-base border-b-2 border-transparent text-gray-400 hover:text-gray-700 transition-all">
-        🇲🇽 Catálogo México
-      </button>
-      <button id="tab-AR" onclick="chequearPestañaInternacional('AR')" class="flex-1 py-4 text-center font-bold text-sm sm:text-base border-b-2 border-transparent text-gray-400 hover:text-gray-700 transition-all">
-        🇦🇷 Catálogo Argentina
-      </button>
-      <button id="tab-US" onclick="chequearPestañaInternacional('US'); cambiarPais('USDEUR')" class="flex-1 py-4 text-center font-bold text-sm sm:text-base border-b-2 border-transparent text-gray-400 hover:text-gray-700 transition-all">
-  Catálogo USD-EUR
-</button>
-    </div>
-  </div>
+function cambiarMonedaInternacional(nuevaMoneda) {
+  estado.monedaGlobalUS = nuevaMoneda;
+  chequearPestañaInternacional('USDEUR');
+  renderizarProductos();
+  renderizarCarrito();
+}
 
-  <main class="flex-grow max-w-7xl w-full mx-auto px-6 py-8">
+// ==========================================
+// RENDERIZADO DE PRODUCTOS Y CATÁLOGO
+// ==========================================
+function renderizarProductos() {
+  const container = document.getElementById('contenedor-productos');
+  if (!container) return;
+  container.innerHTML = '';
+
+  // Filtrar productos que correspondan al país actual
+  const productosFiltrados = PRODUCTOS.filter(p => p.pais === estado.paisActual);
+
+  if (productosFiltrados.length === 0) {
+    container.innerHTML = `<p class="text-center text-gray-400 py-8 text-sm">No hay productos disponibles para esta región todavía.</p>`;
+    return;
+  }
+
+  productosFiltrados.forEach(prod => {
+    const precio = estado.rolActual === 'revendedor' ? prod.precioRevendedor : prod.precioCliente;
+    const precioTexto = `${Monedas[estado.paisActual]}${Number(precio).toLocaleString()}`;
     
-    <div id="loader-conexion" class="text-center my-16 font-bold text-gray-400 flex flex-col items-center justify-center gap-3">
-      <i class="fa-solid fa-spinner animate-spin text-3xl text-yellow-500"></i>
-      <span>Conectando con la base de datos en tiempo real...</span>
-    </div>
-
-    <div id="vista-seleccion-rol" class="max-w-md mx-auto my-16 bg-white border border-gray-200 rounded-3xl p-8 text-center shadow-xl hidden">
-      <h3 class="text-lg font-bold mb-6 text-gray-700 tracking-tight">Selecciona tu tipo de perfil para continuar:</h3>
-      <div class="space-y-3">
-        <button onclick="seleccionarRol('cliente')" class="w-full bg-yellow-400/90 hover:bg-yellow-400 text-gray-900 font-extrabold py-4 rounded-2xl shadow-sm hover:shadow-md transition-all transform hover:-translate-y-0.5">
-          <i class="fa-solid fa-user text-sm mr-2 opacity-80"></i> Soy Cliente
-        </button>
-        <button onclick="abrirModalPinRol()" class="w-full bg-gray-50 hover:bg-gray-100 text-gray-700 font-bold py-4 rounded-2xl border border-gray-200 transition-all transform hover:-translate-y-0.5">
-          <i class="fa-solid fa-handshake text-sm mr-2 opacity-70"></i> Soy Revendedor
-        </button>
-      </div>
-    </div>
-
-    <div id="vista-tienda" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-8">
-      <div class="lg:col-span-2 space-y-6">
-        <div class="bg-white border border-gray-200 rounded-2xl p-4 flex justify-between items-center shadow-xs">
-          <div class="flex gap-2">
-            <span id="badge-pais" class="bg-yellow-50 text-yellow-700 text-xs font-bold px-3 py-1 rounded-full border border-yellow-200"></span>
-            <span id="badge-rol" class="bg-gray-100 text-gray-700 text-xs font-bold px-3 py-1 rounded-full border border-gray-200"></span>
-          </div>
-          <button onclick="volverASeleccionRol()" class="text-xs font-bold text-gray-400 hover:text-gray-600 underline flex items-center gap-1 transition-colors">
-            <i class="fa-solid fa-arrow-left"></i> Cambiar Perfil / País
-          </button>
-        </div>
-
-        <div id="seccion-oferta-combo" class="bg-white border border-gray-200 oferta-animada rounded-3xl p-6 relative overflow-hidden hidden shadow-xs">
-          <div class="absolute top-0 right-0 bg-yellow-400 text-gray-950 font-black text-[10px] px-4 py-1.5 rounded-bl-2xl tracking-wider uppercase">
-            Súper Combo
-          </div>
-          <h4 class="text-lg font-black text-gray-800 mb-1 flex items-center gap-2">
-            <i class="fa-solid fa-wand-magic-sparkles text-yellow-500"></i> Oferta Especial: Arma tu Combo
-          </h4>
-          <p class="text-xs text-gray-500 mb-5">Elige exactamente 3 productos del catálogo abajo y llévatelos juntos por solo <span id="precio-combo-texto" class="text-yellow-600 font-extrabold text-sm"></span></p>
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" id="slots-combo"></div>
-        </div>
-
+    container.innerHTML += `
+      <div class="bg-white rounded-2xl p-4 shadow-xs border border-gray-100 flex flex-col justify-between hover:shadow-md transition-all">
         <div>
-          <h3 class="text-base font-bold text-gray-500 mb-4 tracking-wide uppercase flex items-center gap-2">
-            <i class="fa-solid fa-list-ul"></i> Servicios Disponibles
-          </h3>
-          <div id="contenedor-productos" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
+          <div class="flex justify-between items-start mb-2">
+            <h3 class="font-bold text-gray-800 text-sm sm:text-base">${prod.nombre}</h3>
+            <span class="text-xs bg-amber-50 text-amber-700 font-bold px-2 py-0.5 rounded-md">${prod.categoria || 'Streaming'}</span>
+          </div>
+          <p class="text-lg font-black text-amber-600 mb-4">${precioTexto}</p>
+        </div>
+        <div class="flex gap-2">
+          <button onclick="agregarAlCarrito('${prod.id}')" class="flex-1 bg-gray-900 text-white text-xs font-bold py-2.5 rounded-xl hover:bg-gray-800 transition-all">🛒 Agregar</button>
+          ${estado.rolActual !== 'revendedor' ? `<button onclick="seleccionarParaCombo('${prod.id}')" class="bg-amber-500 text-white text-xs font-bold px-3 py-2.5 rounded-xl hover:bg-amber-600 transition-all">➕ Combo</button>` : ''}
         </div>
       </div>
+    `;
+  });
+}
 
-      <div class="lg:col-span-1">
-        <div class="bg-white border border-gray-200 rounded-3xl p-6 sticky top-[170px] shadow-lg flex flex-col max-h-[72vh]">
-          <h3 class="text-base font-black text-gray-800 mb-4 pb-2 border-b border-gray-100 flex items-center gap-2">
-            <i class="fa-solid fa-cart-shopping text-yellow-500"></i> Resumen de Compra
-          </h3>
-          <div id="items-carrito" class="space-y-3 flex-grow overflow-y-auto pr-1"></div>
-          <div class="mt-4 pt-4 border-t border-gray-100 space-y-4">
-            <div id="desglose-oferta" class="text-xs text-emerald-600 font-bold hidden flex justify-between">
-              <span>¡Descuento Combo Aplicado!</span>
-              <span id="desglose-ahorro"></span>
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-gray-500 text-sm font-medium">Total Estimado:</span>
-              <span id="total-carrito-texto" class="text-2xl font-black text-gray-900 tracking-tight"></span>
-            </div>
-            <button onclick="obtenerProductoWhatsApp()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold py-3.5 px-4 rounded-2xl shadow-md hover:shadow-lg transition-all flex justify-center items-center gap-2 text-sm uppercase tracking-wide">
-              <i class="fa-brands fa-whatsapp text-lg"></i> Obtener el Producto
-            </button>
-          </div>
+// ==========================================
+// MANEJO DE CARRITO Y SELECCIÓN DE COMBOS
+// ==========================================
+function agregarAlCarrito(id) {
+  const prod = PRODUCTOS.find(p => p.id === id);
+  if (!prod) return;
+
+  const itemExistente = estado.carrito.find(item => item.producto.id === id);
+  if (itemExistente) {
+    itemExistente.cantidad++;
+  } else {
+    estado.carrito.push({ producto: prod, cantidad: 1 });
+  }
+  renderizarCarrito();
+}
+
+function seleccionarParaCombo(id) {
+  const prod = PRODUCTOS.find(p => p.id === id);
+  if (!prod) return;
+
+  // Buscar un espacio vacío en el combo de 3 slots
+  const slotLibre = estado.comboSeleccionado.findIndex(slot => slot === null);
+  if (slotLibre !== -1) {
+    estado.comboSeleccionado[slotLibre] = prod;
+  } else {
+    alert("🔥 Tu Combo Especial ya tiene 3 productos seleccionados.");
+  }
+  renderizarCarrito();
+}
+
+function quitarDelCombo(idx) {
+  estado.comboSeleccionado[idx] = null;
+  renderizarCarrito();
+}
+
+function cambiarCantidad(id, cambio) {
+  const item = estado.carrito.find(item => item.producto.id === id);
+  if (!item) return;
+  item.cantidad += cambio;
+  if (item.cantidad <= 0) {
+    estado.carrito = estado.carrito.filter(i => i.producto.id !== id);
+  }
+  renderizarCarrito();
+}
+
+// ==========================================
+// RENDERIZADO DEL PANEL DEL CARRITO DE COMPRAS
+// ==========================================
+function renderizarCarrito() {
+  const container = document.getElementById('items-carrito');
+  if (!container) return;
+  container.innerHTML = '';
+
+  let total = 0;
+
+  // 1. Renderizar ítems del carrito regular
+  estado.carrito.forEach(item => {
+    const precioUnidad = estado.rolActual === 'revendedor' ? item.producto.precioRevendedor : item.producto.precioCliente;
+    const subtotalItem = precioUnidad * item.cantidad;
+    total += subtotalItem;
+
+    container.innerHTML += `
+      <div class="flex justify-between items-center bg-gray-50 p-3 rounded-xl border border-gray-100 text-xs">
+        <div class="flex-1 pr-2">
+          <p class="font-bold text-gray-800">${item.producto.nombre}</p>
+          <p class="text-amber-600 font-medium">${Monedas[estado.paisActual]}${subtotalItem.toLocaleString()}</p>
+        </div>
+        <div class="flex items-center gap-2 bg-white border border-gray-200 rounded-lg p-1">
+          <button onclick="cambiarCantidad('${item.producto.id}', -1)" class="w-5 h-5 font-bold flex items-center justify-center bg-gray-100 rounded-sm text-gray-600 hover:bg-gray-200">-</button>
+          <span class="font-bold text-gray-700 min-w-4 text-center">${item.cantidad}</span>
+          <button onclick="cambiarCantidad('${item.producto.id}', 1)" class="w-5 h-5 font-bold flex items-center justify-center bg-gray-100 rounded-sm text-gray-600 hover:bg-gray-200">+</button>
         </div>
       </div>
-    </div>
+    `;
+  });
 
-    <div id="vista-admin" class="hidden bg-white border border-gray-200 rounded-3xl p-6 shadow-xl">
-      <div class="flex justify-between items-center pb-4 border-b border-gray-100 mb-6">
-        <h2 class="text-xl font-black text-gray-800 flex items-center gap-2">
-          <i class="fa-solid fa-sliders text-yellow-500"></i> Panel de Control Administrativo
-        </h2>
-        <button onclick="cerrarAdmin()" class="bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-bold px-4 py-2 rounded-xl border border-gray-200">
-          Salir del Panel
-        </button>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div class="bg-gray-50 border border-gray-200 rounded-2xl p-4">
-          <h3 class="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider">Seguridad y Códigos PIN</h3>
-          <div class="space-y-3">
-            <div>
-              <label class="block text-xs text-gray-500 mb-1">PIN Admin Maestro:</label>
-              <input type="text" id="input-pin-admin" class="w-full bg-white border border-gray-300 rounded-xl p-2.5 text-sm text-yellow-600 font-mono focus:border-yellow-400 focus:outline-none">
-            </div>
-            <div class="grid grid-cols-3 gap-2">
-              <div>
-                <label class="block text-xs text-gray-500 mb-1">PIN Col:</label>
-                <input type="text" id="input-pin-co" class="w-full bg-white border border-gray-300 rounded-xl p-2.5 text-sm text-center font-mono focus:border-yellow-400 focus:outline-none">
-              </div>
-              <div>
-                <label class="block text-xs text-gray-500 mb-1">PIN Mex:</label>
-                <input type="text" id="input-pin-mx" class="w-full bg-white border border-gray-300 rounded-xl p-2.5 text-sm text-center font-mono focus:border-yellow-400 focus:outline-none">
-              </div>
-              <div>
-                <label class="block text-xs text-gray-500 mb-1">PIN Arg:</label>
-                <input type="text" id="input-pin-ar" class="w-full bg-white border border-gray-300 rounded-xl p-2.5 text-sm text-center font-mono focus:border-yellow-400 focus:outline-none">
-              </div>
-            </div>
-            <button onclick="guardarConfiguracionPines()" class="w-full bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider transition-colors mt-2 shadow-xs">
-              Actualizar Llaves de Seguridad
-            </button>
+  // 2. Renderizar ranuras del Combo de 3 Productos
+  const pCombo = estado.comboSeleccionado.filter(p => p !== null).length;
+  
+  if (estado.rolActual !== 'revendedor') {
+    let comboHTML = `<div class="mt-4 p-3 bg-amber-50 rounded-xl border border-amber-200"><p class="text-xs font-black text-amber-900 mb-2 flex justify-between">🔥 Súper Combo (Elige 3 Productos): <span>${pCombo}/3</span></p><div class="grid grid-cols-3 gap-2">`;
+    
+    estado.comboSeleccionado.forEach((prod, idx) => {
+      if (prod) {
+        comboHTML += `
+          <div class="relative bg-white border border-amber-300 p-2 rounded-lg text-[10px] font-bold text-center text-amber-800 flex flex-col justify-between min-h-[50px]">
+            <span>${prod.nombre}</span>
+            <button onclick="quitarDelCombo(${idx})" class="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center text-[8px] font-black shadow-xs">×</button>
           </div>
+        `;
+      } else {
+        comboHTML += `
+          <div class="bg-dashed border-2 border-dashed border-gray-200 rounded-lg text-[10px] text-gray-400 flex items-center justify-center text-center p-2 min-h-[50px]">
+            Vacío
+          </div>
+        `;
+      }
+    });
+    
+    comboHTML += `</div>`;
+
+    // Si el combo está completo (3 ítems), se suma el precio promocional directo de Firebase
+    if (pCombo === 3) {
+      total += COMBOS[estado.paisActual];
+      comboHTML += `
+        <div class="mt-2 flex justify-between items-center text-xs bg-amber-500 text-white p-2 rounded-lg font-black animate-pulse">
+          <span>¡Combo Activado con Éxito!</span>
+          <span>${Monedas[estado.paisActual]}${COMBOS[estado.paisActual].toLocaleString()}</span>
         </div>
+      `;
+    }
+    comboHTML += `</div>`;
+    container.innerHTML += comboHTML;
+  }
 
-        <div class="bg-gray-50 border border-gray-200 rounded-2xl p-4">
-          <h3 class="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider">Tarifa de Combos Especiales (3 Productos)</h3>
-          <div class="grid grid-cols-3 gap-2 mb-3">
-            <div>
-              <label class="block text-xs text-gray-500 mb-1">Colombia (COP):</label>
-              <input type="number" id="input-combo-co" class="w-full bg-white border border-gray-300 rounded-xl p-2.5 text-sm font-bold focus:border-yellow-400 focus:outline-none">
-            </div>
-            <div>
-              <label class="block text-xs text-gray-500 mb-1">México (MXN):</label>
-              <input type="number" id="input-combo-mx" class="w-full bg-white border border-gray-300 rounded-xl p-2.5 text-sm font-bold focus:border-yellow-400 focus:outline-none">
-            </div>
-            <div>
-              <label class="block text-xs text-gray-500 mb-1">Argentina (ARS):</label>
-              <input type="number" id="input-combo-ar" class="w-full bg-white border border-gray-300 rounded-xl p-2.5 text-sm font-bold focus:border-yellow-400 focus:outline-none">
-            </div>
-          </div>
-          <button onclick="guardarPreciosCombo()" class="w-full bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider transition-colors shadow-xs">
-            Actualizar Tarifas Combo
-          </button>
-        </div>
-      </div>
+  // Actualizar el valor Neto Final en la Pantalla
+  const elementoTotal = document.getElementById('total-carrito');
+  if (elementoTotal) {
+    elementoTotal.innerText = `${Monedas[estado.paisActual]}${total.toLocaleString()}`;
+  }
+}
 
-      <div class="bg-gray-50 border border-gray-200 rounded-2xl p-6 mb-6">
-        <h3 class="text-sm font-bold text-gray-400 mb-4 uppercase tracking-wider flex items-center gap-2">
-          <i class="fa-solid fa-plus text-yellow-600"></i> Registrar o Modificar Cuenta Streaming
-        </h3>
-        <input type="hidden" id="form-product-index" value="">
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-          <div class="md:col-span-2">
-            <label class="block text-xs text-gray-500 mb-1">Nombre de la Cuenta / Tipo de Perfil:</label>
-            <input type="text" id="form-product-nombre" placeholder="Ej: SPOTIFY PREMIUM" class="w-full bg-white border border-gray-300 rounded-xl p-2.5 text-sm focus:border-yellow-400 focus:outline-none">
-          </div>
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Plataforma:</label>
-            <select id="form-product-categoria" class="w-full bg-white border border-gray-300 rounded-xl p-2.5 text-sm text-gray-700 focus:border-yellow-400 focus:outline-none">
-              <option value="Netflix">Netflix</option>
-              <option value="Paramount+">Paramount+</option>
-              <option value="Disney+">Disney+</option>
-              <option value="Spotify">Spotify</option>
-              <option value="Amazon Prime">Amazon Prime</option>
-              <option value="Max">Max</option>
-              <option value="Otro">Otro</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Catálogo Asignado:</label>
-            <select id="form-product-pais" class="w-full bg-white border border-gray-300 rounded-xl p-2.5 text-sm text-gray-700 focus:border-yellow-400 focus:outline-none">
-              <option value="CO">Colombia</option>
-              <option value="MX">México</option>
-              <option value="AR">Argentina</option>
-            </select>
-          </div>
-        </div>
+// ==========================================
+// VALIDACIÓN DE ROLES (CLIENTE / REVENDEDOR)
+// ==========================================
+function validarPinAcceso(pinIngresado) {
+  if (pinIngresado === PINES.admin) {
+    estado.rolActual = 'admin';
+    alert("👑 Modo Administrador Global Conectado.");
+    abrirPanelAdmin();
+    return;
+  }
 
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 items-center">
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Precio Cliente ($):</label>
-            <input type="number" id="form-product-precio-cliente" class="w-full bg-white border border-gray-300 rounded-xl p-2.5 text-sm font-bold text-gray-800 focus:border-yellow-400 focus:outline-none">
-          </div>
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Precio Revendedor ($):</label>
-            <input type="number" id="form-product-precio-revendedor" class="w-full bg-white border border-gray-300 rounded-xl p-2.5 text-sm font-bold text-gray-800 focus:border-yellow-400 focus:outline-none">
-          </div>
-          <div class="flex items-center pt-4 md:pt-0 pl-2">
-            <label class="flex items-center space-x-3 cursor-pointer select-none">
-              <input type="checkbox" id="form-product-agotado" class="w-5 h-5 accent-red-500 rounded border-gray-300 text-red-500 focus:ring-red-400">
-              <span class="text-sm font-bold text-red-600 uppercase tracking-wide">¿Marcar Agotado?</span>
-            </label>
-          </div>
-        </div>
+  // Comprobar si corresponde al PIN de revendedor de la región actual
+  if (pinIngresado === PINES[estado.paisActual]) {
+    estado.rolActual = 'revendedor';
+    alert(`💼 Modo Revendedor Autorizado (${estado.paisActual}) Activo.`);
+  } else {
+    estado.rolActual = 'cliente';
+    alert("👤 Acceso correcto como Cliente Final.");
+  }
+  
+  renderizarProductos();
+  renderizarCarrito();
+}
 
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-          <button onclick="guardarProducto()" class="w-full bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-extrabold py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all shadow-sm flex justify-center items-center gap-1">
-            <i class="fa-solid fa-floppy-disk"></i> Guardar Ítem
-          </button>
-          <button onclick="limpiarFormularioProducto()" class="w-full bg-white hover:bg-gray-100 text-gray-500 py-2.5 rounded-xl text-xs font-bold transition-all border border-gray-300">
-            Limpiar Campos
-          </button>
-        </div>
-      </div>
-
-      <div>
-        <h3 class="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider">Base de Datos de Cuentas</h3>
-        <div class="overflow-x-auto border border-gray-200 rounded-2xl bg-white shadow-xs">
-          <table class="w-full text-left text-sm text-gray-600">
-            <thead class="bg-gray-50 text-xs text-gray-400 uppercase tracking-wider border-b border-gray-200">
-              <tr>
-                <th class="p-3.5">País</th>
-                <th class="p-3.5">Plataforma</th>
-                <th class="p-3.5">Nombre / Detalles del Servicio</th>
-                <th class="p-3.5">Estado</th>
-                <th class="p-3.5">P. Cliente</th>
-                <th class="p-3.5">P. Revendedor</th>
-                <th class="p-3.5 text-center">Acciones</th>
-              </tr>
-            </thead>
-            <tbody id="tabla-admin-productos" class="divide-y divide-gray-100"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </main>
-
-  <div id="modal-pin-rol" class="fixed inset-0 bg-gray-900/40 backdrop-blur-xs hidden flex items-center justify-center p-4 z-50">
-    <div class="bg-white border border-gray-200 rounded-3xl w-full max-w-sm p-6 shadow-2xl relative">
-      <h3 class="text-base font-bold text-center text-gray-800 mb-2">Acceso Distribuidor <span id="modal-pin-rol-pais" class="text-yellow-600"></span></h3>
-      <p class="text-xs text-gray-400 text-center mb-5">Introduce tu PIN de revendedor asignado.</p>
-      <input type="password" id="input-modal-pin-rol" placeholder="••••" maxlength="6" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-3 text-center font-mono text-xl tracking-widest text-gray-800 focus:outline-none focus:border-yellow-400 mb-5">
-      <div class="flex gap-2">
-        <button onclick="cerrarModalPinRol()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-500 py-2.5 rounded-xl text-xs font-bold transition-colors">Cancelar</button>
-        <button onclick="validarPinRol()" class="flex-1 bg-yellow-400 hover:bg-yellow-500 text-gray-900 py-2.5 rounded-xl text-xs font-extrabold transition-colors">Verificar</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="modal-pin-admin" class="fixed inset-0 bg-gray-900/40 backdrop-blur-xs hidden flex items-center justify-center p-4 z-50">
-    <div class="bg-white border border-gray-200 rounded-3xl w-full max-w-sm p-6 shadow-2xl relative">
-      <h3 class="text-base font-bold text-center text-gray-800 mb-2"><i class="fa-solid fa-lock text-yellow-500 mr-2"></i>Área de Gerencia</h3>
-      <p class="text-xs text-gray-400 text-center mb-5">Introduce la clave maestra de administrador.</p>
-      <input type="password" id="input-modal-pin-admin" placeholder="••••" maxlength="6" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-3 text-center font-mono text-xl tracking-widest text-gray-800 focus:outline-none focus:border-yellow-400 mb-5">
-      <div class="flex gap-2">
-        <button onclick="cerrarLoginAdmin()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-500 py-2.5 rounded-xl text-xs font-bold transition-colors">Cerrar</button>
-        <button onclick="validarPinAdmin()" class="flex-1 bg-yellow-400 hover:bg-yellow-500 text-gray-900 py-2.5 rounded-xl text-xs font-extrabold transition-colors">Acceder</button>
-      </div>
-    </div>
-  </div>
-
-  <footer class="bg-white border-t border-gray-200 p-4 text-center text-xs text-gray-400 mt-12">
-    <p>&copy; 2026 Edwauge.Vip · Catálogo Profesional de Servicios Digitales en la Nube.</p>
-  </footer>
-
-  <script src="./script.js"></script>
-</body>
-</html>
+// ==========================================
+// CONFIGURACIÓN FINAL DEL MENSAJE DE WHATSAPP
+// ==========================================
+function obtenerProductoWhatsApp() {
+  const pCombo = estado.comboSeleccionado.filter(p => p !== null);
+  if (estado.carrito.length === 0 && pCombo.length === 0) { 
+    alert("🛒 Tu carrito de compras está vacío."); 
+    return; 
+  }
+  
+  let mensaje = `👋 ¡Hola *Edwauge.Vip*! Me interesa adquirir los siguientes productos de Streaming:\n\n🌍 *Catálogo:* ${estado.paisActual}\n👤 *Perfil:* ${estado.rolActual || 'cliente'}\n-------------------------------------------\n`;
+  let total = 0;
+  
+  // 1. Listar productos del carrito regular en el texto
+  estado.carrito.forEach(item => {
+    const pU = estado.rolActual === 'revendedor' ? item.producto.precioRevendedor : item.producto.precioCliente;
+    total += pU * item.cantidad; 
+    mensaje += `📦 *${item.cantidad}x* ${item.producto.nombre} (${Monedas[estado.paisActual]}${(pU * item.cantidad).toLocaleString()})\n`;
+  });
+  
+  // 2. DETALLAR PRODUCTOS DEL COMBO ESPECIAL DE FORMA CORRECTA
+  if (estado.rolActual !== 'revendedor' && pCombo.length === 3) { 
+    total += COMBOS[estado.paisActual]; 
+    mensaje += `\n🔥 *Súper Combo Especial (3 Productos):*\n`;
+    pCombo.forEach((prod, idx) => {
+      mensaje += `  ✨ *Ítem ${idx + 1}:* ${prod.nombre}\n`;
+    });
+    mensaje += `💰 *Precio Combo:* ${Monedas[estado.paisActual]}${COMBOS[estado.paisActual].toLocaleString()}\n`; 
+  }
+  
+  mensaje += `-------------------------------------------\n💰 *TOTAL NETO A PAGAR:* ${Monedas[estado.paisActual]}${total.toLocaleString()}`;
+  
+  // Abrir API de WhatsApp hacia tu número comercial
+  window.open(`https://api.whatsapp.com/send?phone=3022237839&text=${encodeURIComponent(mensaje)}`, '_blank');
+}
