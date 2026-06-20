@@ -17,7 +17,8 @@ let estado = {
   rolActual: 'cliente', 
   carrito: [], 
   comboSeleccionado: [null, null, null],
-  monedaGlobalUS: 'USD'
+  monedaGlobalUS: 'USD',
+  tipoValidacionPin: '' // Guarda si estamos intentando validar 'revendedor' o 'admin'
 };
 
 const Monedas = { 
@@ -28,7 +29,7 @@ const Monedas = {
 };
 
 // ==========================================
-// CONEXIÓN EN TIEMPO REAL
+// ESCUCHAR EN TIEMPO REAL DESDE FIREBASE
 // ==========================================
 db.ref().on('value', (snapshot) => {
   const data = snapshot.val();
@@ -40,80 +41,91 @@ db.ref().on('value', (snapshot) => {
 });
 
 // ==========================================
-// INTERFAZ DEL MODAL DE ACCESO ESTÉTICO
+// CONTROL DEL FLUJO DE PANTALLAS DE BIENVENIDA
 // ==========================================
-function abrirModalAcceso() {
-  const modal = document.getElementById('modal-acceso');
-  const caja = document.getElementById('modal-caja');
-  document.getElementById('input-pin-seguro').value = '';
-  regresarAVistaRoles();
-  
-  modal.classList.remove('hidden');
-  setTimeout(() => {
-    modal.classList.add('opacity-100');
-    caja.classList.remove('scale-95');
-    caja.classList.add('scale-100');
-  }, 10);
-}
-
-function cerrarModalAcceso() {
-  const modal = document.getElementById('modal-acceso');
-  const caja = document.getElementById('modal-caja');
-  
-  modal.classList.remove('opacity-100');
-  caja.classList.remove('scale-100');
-  caja.classList.add('scale-95');
-  setTimeout(() => {
-    modal.classList.add('hidden');
-  }, 300);
-}
-
-function mostrarVistaPin() {
-  document.getElementById('modal-vista-roles').classList.add('hidden');
-  document.getElementById('modal-vista-pin').classList.remove('hidden');
-  document.getElementById('input-pin-seguro').focus();
-}
-
-function regresarAVistaRoles() {
-  document.getElementById('modal-vista-pin').classList.add('hidden');
-  document.getElementById('modal-vista-roles').classList.remove('hidden');
-}
-
 function seleccionarRolDirecto(rol) {
   estado.rolActual = rol;
   document.getElementById('etiqueta-rol').innerText = 'Cliente';
-  cerrarModalAcceso();
+  
+  // Ocultar pantallas de acceso y mostrar catálogo principal
+  document.getElementById('pantalla-perfiles').classList.add('hidden');
+  document.getElementById('interfaz-catalogo').classList.remove('hidden');
+  
   renderizarProductos();
   renderizarCarrito();
 }
 
-function procesarPinModal() {
+function mostrarVistaPinRevendedor() {
+  estado.tipoValidacionPin = 'revendedor';
+  document.getElementById('titulo-pin').innerText = '🤝 Acceso para Revendedores';
+  document.getElementById('pantalla-perfiles').classList.add('hidden');
+  document.getElementById('pantalla-pin').classList.remove('hidden');
+  document.getElementById('input-pin-seguro').value = '';
+  document.getElementById('input-pin-seguro').focus();
+}
+
+function mostrarVistaPinAdmin() {
+  estado.tipoValidacionPin = 'admin';
+  document.getElementById('titulo-pin').innerText = '👑 Acceso de Administrador';
+  document.getElementById('pantalla-perfiles').classList.add('hidden');
+  document.getElementById('pantalla-pin').classList.remove('hidden');
+  document.getElementById('input-pin-seguro').value = '';
+  document.getElementById('input-pin-seguro').focus();
+}
+
+function regresarAInicioPerfiles() {
+  document.getElementById('pantalla-pin').classList.add('hidden');
+  document.getElementById('pantalla-perfiles').classList.remove('hidden');
+}
+
+function cerrarSesion() {
+  estado.carrito = [];
+  estado.comboSeleccionado = [null, null, null];
+  document.getElementById('interfaz-catalogo').classList.add('hidden');
+  document.getElementById('pantalla-perfiles').classList.remove('hidden');
+}
+
+// ==========================================
+// VALIDACIÓN DE CÓDIGOS PIN DE ACCESO
+// ==========================================
+function procesarPinFormulario() {
   const pin = document.getElementById('input-pin-seguro').value;
   
-  if (pin === PINES.admin) {
-    estado.rolActual = 'admin';
-    document.getElementById('etiqueta-rol').innerText = 'Administrador';
-    alert("👑 Modo Administrador Global Conectado.");
-    cerrarModalAcceso();
-    if(typeof abrirPanelAdmin === 'function') abrirPanelAdmin();
-  } else if (pin === PINES[estado.paisActual]) {
-    estado.rolActual = 'revendedor';
-    document.getElementById('etiqueta-rol').innerText = `Revendedor (${estado.paisActual})`;
-    alert(`💼 Modo Revendedor Autorizado (${estado.paisActual}) Activo.`);
-    cerrarModalAcceso();
-  } else {
-    alert("❌ Código PIN inválido para la región actual.");
-    document.getElementById('input-pin-seguro').value = '';
-    document.getElementById('input-pin-seguro').focus();
-    return;
+  if (estado.tipoValidacionPin === 'admin') {
+    if (pin === PINES.admin) {
+      estado.rolActual = 'admin';
+      document.getElementById('etiqueta-rol').innerText = 'Administrador';
+      alert("👑 Modo Administrador Global Conectado.");
+      document.getElementById('pantalla-pin').classList.add('hidden');
+      document.getElementById('interfaz-catalogo').classList.remove('hidden');
+      if(typeof abrirPanelAdmin === 'function') abrirPanelAdmin();
+    } else {
+      alert("❌ Código PIN de Administrador incorrecto.");
+      document.getElementById('input-pin-seguro').value = '';
+      document.getElementById('input-pin-seguro').focus();
+      return;
+    }
+  } else if (estado.tipoValidacionPin === 'revendedor') {
+    if (pin === PINES[estado.paisActual]) {
+      estado.rolActual = 'revendedor';
+      document.getElementById('etiqueta-rol').innerText = `Revendedor (${estado.paisActual})`;
+      alert(`💼 Modo Revendedor Autorizado (${estado.paisActual}) Activo.`);
+      document.getElementById('pantalla-pin').classList.add('hidden');
+      document.getElementById('interfaz-catalogo').classList.remove('hidden');
+    } else {
+      alert(`❌ PIN incorrecto para la región seleccionada (${estado.paisActual}).`);
+      document.getElementById('input-pin-seguro').value = '';
+      document.getElementById('input-pin-seguro').focus();
+      return;
+    }
   }
-  
+
   renderizarProductos();
   renderizarCarrito();
 }
 
 // ==========================================
-// CONTROL DE PAÍSES Y PESTAÑAS
+// NAVEGACIÓN DE PAÍSES Y MONEDAS INTERNACIONALES
 // ==========================================
 function cambiarPais(pais) {
   estado.paisActual = pais;
@@ -131,7 +143,6 @@ function cambiarPais(pais) {
     botonActivo.classList.add('border-amber-500', 'text-amber-600');
   }
 
-  // Sincronizar etiqueta de rol visual
   if (estado.rolActual === 'revendedor') {
     document.getElementById('etiqueta-rol').innerText = `Revendedor (${pais})`;
   }
@@ -165,7 +176,7 @@ function cambiarMonedaInternacional(nuevaMoneda) {
 }
 
 // ==========================================
-// RENDERIZAR INTERFAZ DE PRODUCTOS
+// RENDERIZADO DEL CATÁLOGO DE PRODUCTOS
 // ==========================================
 function renderizarProductos() {
   const container = document.getElementById('contenedor-productos');
@@ -202,7 +213,7 @@ function renderizarProductos() {
 }
 
 // ==========================================
-// CARRITO Y LOGICA DE COMBOS
+// MANEJO DE COMPRAS Y AGREGAR ELEMENTOS
 // ==========================================
 function agregarAlCarrito(id) {
   const prod = PRODUCTOS.find(p => p.id === id);
@@ -212,7 +223,7 @@ function agregarAlCarrito(id) {
   if (itemExistente) {
     itemExistente.cantidad++;
   } else {
-    estado.carrito.push({ producto: prod, cantidad: 1 });
+    estado.carrito.push({ producto: prod, bandwidth: 1, cantidad: 1 });
   }
   renderizarCarrito();
 }
@@ -265,7 +276,7 @@ function renderizarCarrito() {
         </div>
         <div class="flex items-center gap-2 bg-white border border-gray-200 rounded-lg p-1">
           <button onclick="cambiarCantidad('${item.producto.id}', -1)" class="w-5 h-5 font-bold flex items-center justify-center bg-gray-100 rounded-sm text-gray-600 hover:bg-gray-200 cursor-pointer">-</button>
-          <span class="font-bold text-gray-700 min-w-4 text-center">${item.cantidad}</span>
+          <span class="font-bold text-gray-700 min-w-4 text-center">${item.whitespace || item.cantidad}</span>
           <button onclick="cambiarCantidad('${item.producto.id}', 1)" class="w-5 h-5 font-bold flex items-center justify-center bg-gray-100 rounded-sm text-gray-600 hover:bg-gray-200 cursor-pointer">+</button>
         </div>
       </div>
@@ -314,7 +325,7 @@ function renderizarCarrito() {
 }
 
 // ==========================================
-// SALIDA Y CONFIGURACIÓN WHATSAPP
+// ESTRUCTURA Y ENVÍO DE PEDIDO A WHATSAPP
 // ==========================================
 function obtenerProductoWhatsApp() {
   const pCombo = estado.comboSeleccionado.filter(p => p !== null);
@@ -329,7 +340,7 @@ function obtenerProductoWhatsApp() {
   estado.carrito.forEach(item => {
     const pU = estado.rolActual === 'revendedor' ? item.producto.precioRevendedor : item.producto.precioCliente;
     total += pU * item.cantidad; 
-    mensaje += `📦 *${item.cantidad}x* ${item.producto.nombre} (${Monedas[estado.paisActual]}${(pU * item.cantidad).toLocaleString()})\n`;
+    mensaje += `📦 *${item.whitespace || item.cantidad}x* ${item.producto.nombre} (${Monedas[estado.paisActual]}${(pU * item.cantidad).toLocaleString()})\n`;
   });
   
   if (estado.rolActual !== 'revendedor' && pCombo.length === 3) { 
