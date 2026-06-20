@@ -35,16 +35,16 @@
   <div class="bg-white border-b border-gray-200 sticky top-[69px] z-30 shadow-xs">
     <div class="max-w-4xl mx-auto flex justify-around overflow-x-auto whitespace-nowrap">
       <button id="tab-CO" onclick="cambiarPais('CO')" class="flex-1 py-4 px-3 text-center font-bold text-sm sm:text-base border-b-2 border-yellow-500 text-yellow-600 transition-all">
-        🇨🇴 Catálogo Colombia
+        汇 Colombia
       </button>
       <button id="tab-MX" onclick="cambiarPais('MX')" class="flex-1 py-4 px-3 text-center font-bold text-sm sm:text-base border-b-2 border-transparent text-gray-400 hover:text-gray-700 transition-all">
-        🇲🇽 Catálogo México
+        🇲🇽 México
       </button>
       <button id="tab-AR" onclick="cambiarPais('AR')" class="flex-1 py-4 px-3 text-center font-bold text-sm sm:text-base border-b-2 border-transparent text-gray-400 hover:text-gray-700 transition-all">
-        🇦🇷 Catálogo Argentina
+        🇦🇷 Argentina
       </button>
       <button id="tab-USDEUR" onclick="cambiarPais('USDEUR')" class="flex-1 py-4 px-3 text-center font-bold text-sm sm:text-base border-b-2 border-transparent text-gray-400 hover:text-gray-700 transition-all">
-        🌍 Catálogo USD-EUR
+        🌍 USD-EUR
       </button>
     </div>
   </div>
@@ -58,149 +58,4 @@
           <i class="fa-solid fa-user text-sm mr-2 opacity-80"></i> Soy Cliente
         </button>
         <button onclick="abrirModalPinRol()" class="w-full bg-gray-50 hover:bg-gray-100 text-gray-700 font-bold py-4 rounded-2xl border border-gray-200 transition-all transform hover:-translate-y-0.5">
-          <i class="fa-solid fa-handshake text-sm mr-2 opacity-70"></i> Soy Revendedor
-        </button>
-      </div>
-    </div>
-
-    <div id="vista-tienda" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-8">
-      <div class="lg:col-span-2 space-y-6">
-        <div class="bg-white border border-gray-200 rounded-2xl p-4 flex justify-between items-center shadow-xs">
-          <div class="flex gap-2">
-            <span id="badge-pais" class="bg-yellow-50 text-yellow-700 text-xs font-bold px-3 py-1 rounded-full border border-yellow-200"></span>
-            <span id="badge-rol" class="bg-gray-100 text-gray-700 text-xs font-bold px-3 py-1 rounded-full border border-gray-200"></span>
-          </div>
-          <button onclick="volverASeleccionRol()" class="text-xs font-bold text-gray-400 hover:text-gray-600 underline flex items-center gap-1 transition-colors">
-            <i class="fa-solid fa-arrow-left"></i> Cambiar Perfil / País
-          </button>
-        </div>
-
-        <div id="seccion-oferta-combo" class="bg-white border border-gray-200 oferta-animada rounded-3xl p-6 relative overflow-hidden hidden shadow-xs">
-          <div class="absolute top-0 right-0 bg-yellow-400 text-gray-950 font-black text-[10px] px-4 py-1.5 rounded-bl-2xl tracking-wider uppercase">
-            Súper Combo
-          </div>
-          <h4 class="text-lg font-black text-gray-800 mb-1 flex items-center gap-2">
-            <i class="fa-solid fa-wand-magic-sparkles text-yellow-500"></i> Oferta Especial: Arma tu Combo
-          </h4>
-          <p class="text-xs text-gray-500 mb-5">Elige exactamente 3 productos del catálogo abajo y llévatelos juntos por solo <span id="precio-combo-texto" class="text-yellow-600 font-extrabold text-sm"></span></p>
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" id="slots-combo"></div>
-        </div>
-
-        <div>
-          <h3 class="text-base font-bold text-gray-500 mb-4 tracking-wide uppercase flex items-center gap-2">
-            <i class="fa-solid fa-list-ul"></i> Servicios Disponibles
-          </h3>
-          <div id="contenedor-productos" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
-        </div>
-      </div>
-
-      <div class="lg:col-span-1">
-        <div class="bg-white border border-gray-200 rounded-3xl p-6 sticky top-[170px] shadow-lg flex flex-col max-h-[72vh]">
-          <h3 class="text-base font-black text-gray-800 mb-4 pb-2 border-b border-gray-100 flex items-center gap-2">
-            <i class="fa-solid fa-cart-shopping text-yellow-500"></i> Resumen de Compra
-          </h3>
-          <div id="items-carrito" class="space-y-3 flex-grow overflow-y-auto pr-1"></div>
-          <div class="mt-4 pt-4 border-t border-gray-100 space-y-4">
-            <div id="desglose-oferta" class="text-xs text-emerald-600 font-bold hidden flex justify-between">
-              <span>¡Descuento Combo Aplicado!</span>
-              <span id="desglose-ahorro"></span>
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-gray-500 text-sm font-medium">Total Estimado:</span>
-              <span id="total-carrito-texto" class="text-2xl font-black text-gray-900 tracking-tight"></span>
-            </div>
-            <button onclick="obtenerProductoWhatsApp()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold py-3.5 px-4 rounded-2xl shadow-md hover:shadow-lg transition-all flex justify-center items-center gap-2 text-sm uppercase tracking-wide">
-              <i class="fa-brands fa-whatsapp text-lg"></i> Obtener el Producto
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div id="vista-admin" class="hidden bg-white border border-gray-200 rounded-3xl p-6 shadow-xl">
-      <div class="flex justify-between items-center pb-4 border-b border-gray-100 mb-6">
-        <h2 class="text-xl font-black text-gray-800 flex items-center gap-2">
-          <i class="fa-solid fa-sliders text-yellow-500"></i> Panel de Control Administrativo
-        </h2>
-        <button onclick="cerrarAdmin()" class="bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-bold px-4 py-2 rounded-xl border border-gray-200">
-          Salir del Panel
-        </button>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div class="bg-gray-50 border border-gray-200 rounded-2xl p-4">
-          <h3 class="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider">Seguridad y Códigos PIN</h3>
-          <div class="space-y-3">
-            <div>
-              <label class="block text-xs text-gray-500 mb-1">PIN Admin Maestro:</label>
-              <input type="text" id="input-pin-admin" class="w-full bg-white border border-gray-300 rounded-xl p-2.5 text-sm text-yellow-600 font-mono focus:border-yellow-400 focus:outline-none">
-            </div>
-            <div class="grid grid-cols-3 gap-2">
-              <div>
-                <label class="block text-xs text-gray-500 mb-1">PIN Col:</label>
-                <input type="text" id="input-pin-co" class="w-full bg-white border border-gray-300 rounded-xl p-2.5 text-sm text-center font-mono focus:border-yellow-400 focus:outline-none">
-              </div>
-              <div>
-                <label class="block text-xs text-gray-500 mb-1">PIN Mex:</label>
-                <input type="text" id="input-pin-mx" class="w-full bg-white border border-gray-300 rounded-xl p-2.5 text-sm text-center font-mono focus:border-yellow-400 focus:outline-none">
-              </div>
-              <div>
-                <label class="block text-xs text-gray-500 mb-1">PIN Arg:</label>
-                <input type="text" id="input-pin-ar" class="w-full bg-white border border-gray-300 rounded-xl p-2.5 text-sm text-center font-mono focus:border-yellow-400 focus:outline-none">
-              </div>
-            </div>
-            <button onclick="guardarConfiguracionPines()" class="w-full bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider transition-colors mt-2 shadow-xs">
-              Actualizar Llaves de Seguridad
-            </button>
-          </div>
-        </div>
-
-        <div class="bg-gray-50 border border-gray-200 rounded-2xl p-4">
-          <h3 class="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider">Tarifa de Combos Especiales (3 Productos)</h3>
-          <div class="grid grid-cols-3 gap-2 mb-3">
-            <div>
-              <label class="block text-xs text-gray-500 mb-1">Colombia (COP):</label>
-              <input type="number" id="input-combo-co" class="w-full bg-white border border-gray-300 rounded-xl p-2.5 text-sm font-bold focus:border-yellow-400 focus:outline-none">
-            </div>
-            <div>
-              <label class="block text-xs text-gray-500 mb-1">México (MXN):</label>
-              <input type="number" id="input-combo-mx" class="w-full bg-white border border-gray-300 rounded-xl p-2.5 text-sm font-bold focus:border-yellow-400 focus:outline-none">
-            </div>
-            <div>
-              <label class="block text-xs text-gray-500 mb-1">Argentina (ARS):</label>
-              <input type="number" id="input-combo-ar" class="w-full bg-white border border-gray-300 rounded-xl p-2.5 text-sm font-bold focus:border-yellow-400 focus:outline-none">
-            </div>
-          </div>
-          <button onclick="guardarPreciosCombo()" class="w-full bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider transition-colors shadow-xs">
-            Actualizar Tarifas Combo
-          </button>
-        </div>
-      </div>
-
-      <div class="bg-gray-50 border border-gray-200 rounded-2xl p-6 mb-6">
-        <h3 class="text-sm font-bold text-gray-400 mb-4 uppercase tracking-wider flex items-center gap-2">
-          <i class="fa-solid fa-plus text-yellow-600"></i> Registrar o Modificar Cuenta Streaming
-        </h3>
-        <input type="hidden" id="form-product-index" value="">
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-          <div class="md:col-span-2">
-            <label class="block text-xs text-gray-500 mb-1">Nombre de la Cuenta / Tipo de Perfil:</label>
-            <input type="text" id="form-product-nombre" placeholder="Ej: SPOTIFY PREMIUM" class="w-full bg-white border border-gray-300 rounded-xl p-2.5 text-sm focus:border-yellow-400 focus:outline-none">
-          </div>
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Plataforma:</label>
-            <select id="form-product-categoria" class="w-full bg-white border border-gray-300 rounded-xl p-2.5 text-sm text-gray-700 focus:border-yellow-400 focus:outline-none">
-              <option value="Netflix">Netflix</option>
-              <option value="Paramount+">Paramount+</option>
-              <option value="Disney+">Disney+</option>
-              <option value="Spotify">Spotify</option>
-              <option value="Amazon Prime">Amazon Prime</option>
-              <option value="Max">Max</option>
-              <option value="Otro">Otro</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Catálogo Asignado:</label>
-            <select id="form-product-pais" class="w-full bg-white border border-gray-300 rounded-xl p-2.5 text-sm text-gray-700 focus:border-yellow-400 focus:outline-none">
-              <option value="CO">Colombia</option>
-              <option value="MX">México</option>
+          <i class="fa
