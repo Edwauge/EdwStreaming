@@ -2,7 +2,6 @@
 const defaultPines = { admin: "3859", CO: "2233", MX: "3344", AR: "4455", USDEUR: "5566" };
 const defaultCombos = { CO: 35000, MX: 199, AR: 2500, USDEUR: 10 };
 const defaultProductos = [
-  // Productos de prueba iniciales (se pueden editar o borrar desde el panel admin)
   { nombre: "SPOTIFY PREMIUM - 1 Año Cuenta Nueva", categoria: "Spotify", pais: "CO", precioCliente: 45000, precioRevendedor: 38000, agotado: false },
   { nombre: "Netflix - 1 Perfil UHD Premium (Mes)", categoria: "Netflix", pais: "CO", precioCliente: 15000, precioRevendedor: 11000, agotado: false },
   { nombre: "Disney+ - 1 Perfil Estándar (Mes)", categoria: "Disney+", pais: "CO", precioCliente: 10000, precioRevendedor: 7500, agotado: false },
@@ -14,10 +13,9 @@ let PINES = JSON.parse(localStorage.getItem('ev_pines')) || defaultPines;
 let COMBOS = JSON.parse(localStorage.getItem('ev_combos')) || defaultCombos;
 let PRODUCTOS = JSON.parse(localStorage.getItem('ev_productos')) || defaultProductos;
 
-let estado = { paisActual: 'CO', rolActual: null, carrito: [], comboSeleccionado: [null, null, null] };
+let estado = { paisActual: 'CO', rolActual: null, carrito: [], comboSeleccionado: [null, null, null], tipoModalActivo: null };
 const Monedas = { CO: 'COP $', MX: 'MXN $', AR: 'ARS $', USDEUR: 'USD $' };
 
-// Ejecución al iniciar la página
 window.onload = function() {
   guardarEnLocalStorage();
   sincronizarCamposAdmin();
@@ -30,7 +28,6 @@ function guardarEnLocalStorage() {
   localStorage.setItem('ev_productos', JSON.stringify(PRODUCTOS));
 }
 
-// Navegación limpia entre las pestañas superiores
 function cambiarPais(codigoPais) {
   estado.paisActual = codigoPais;
   estado.carrito = []; 
@@ -46,7 +43,7 @@ function cambiarPais(codigoPais) {
       }
     }
   });
-  estado.rolActual = null; // Reinicia el perfil al cambiar de país para pedir credenciales correspondientes
+  estado.rolActual = null;
   actualizarVistaVenta();
 }
 
@@ -55,17 +52,66 @@ function seleccionarRol(rol) {
   actualizarVistaVenta(); 
 }
 
-// Ventana emergente clásica del navegador para validar el PIN de revendedores sin trabar la interfaz
-function abrirModalPinRol() { 
-  let paisTexto = estado.paisActual === 'CO' ? 'Colombia' : estado.paisActual === 'MX' ? 'México' : estado.paisActual === 'AR' ? 'Argentina' : 'USD-EUR';
-  let pinIngresado = prompt(`🔒 Ingrese su PIN de acceso para el catálogo ${paisTexto}:`);
+// CONTROLADORES DE MODAL ESTILIZADO DE SEGURIDAD (NUEVO)
+function abrirModalSeguridad(tipo) {
+  estado.tipoModalActivo = tipo; // 'admin' o 'revendedor'
+  const modal = document.getElementById('modal-seguridad');
+  const titulo = document.getElementById('modal-seguridad-titulo');
+  const desc = document.getElementById('modal-seguridad-descripcion');
+  const icono = document.getElementById('modal-seguridad-icono');
+  const input = document.getElementById('modal-seguridad-input');
+
+  if (!modal || !input) return;
   
-  if (pinIngresado === null) return; // Si el usuario cancela, no hace nada
+  input.value = ''; // Limpia entrada anterior
   
-  if (pinIngresado === PINES[estado.paisActual]) { 
-    seleccionarRol('revendedor'); 
-  } else { 
-    alert("❌ Código PIN incorrecto para este catálogo."); 
+  if (tipo === 'admin') {
+    titulo.innerText = "Acceso Administrativo";
+    desc.innerText = "Introduce la Clave Maestra de Backoffice.";
+    icono.className = "fa-solid fa-user-gear";
+  } else {
+    let paisTexto = estado.paisActual === 'CO' ? 'Colombia' : estado.paisActual === 'MX' ? 'México' : estado.paisActual === 'AR' ? 'Argentina' : 'USD-EUR';
+    titulo.innerText = `Acceso Revendedor (${paisTexto})`;
+    desc.innerText = `Ingresa el PIN asignado al catálogo regional de ${paisTexto}.`;
+    icono.className = "fa-solid fa-handshake";
+  }
+
+  modal.classList.remove('hidden');
+  input.focus();
+
+  // Escuchar tecla Enter en el input del modal para máxima comodidad
+  input.onkeydown = function(e) {
+    if (e.key === 'Enter') procesarValidacionSeguridad();
+  };
+}
+
+function cerrarModalSeguridad() {
+  document.getElementById('modal-seguridad')?.classList.add('hidden');
+  estado.tipoModalActivo = null;
+}
+
+function procesarValidacionSeguridad() {
+  const pinIngresado = document.getElementById('modal-seguridad-input')?.value.trim();
+  
+  if (!pinIngresado) { alert("⚠️ Por favor digite su código de acceso."); return; }
+
+  if (estado.tipoModalActivo === 'admin') {
+    if (pinIngresado === PINES.admin) {
+      cerrarModalSeguridad();
+      document.getElementById('vista-seleccion-rol')?.classList.add('hidden'); 
+      document.getElementById('vista-tienda')?.classList.add('hidden'); 
+      document.getElementById('vista-admin')?.classList.remove('hidden'); 
+      renderizarTablaAdminProductos(); 
+    } else {
+      alert("❌ PIN de Administrador Inválido.");
+    }
+  } else if (estado.tipoModalActivo === 'revendedor') {
+    if (pinIngresado === PINES[estado.paisActual]) {
+      cerrarModalSeguridad();
+      seleccionarRol('revendedor');
+    } else {
+      alert("❌ Código PIN incorrecto para este catálogo.");
+    }
   }
 }
 
@@ -76,7 +122,8 @@ function volverASeleccionRol() {
   actualizarVistaVenta(); 
 }
 
-// Control central de renderizado de vistas en pantalla
+function cerrarAdmin() { document.getElementById('vista-admin')?.classList.add('hidden'); actualizarVistaVenta(); }
+
 function actualizarVistaVenta() {
   const divSeleccion = document.getElementById('vista-seleccion-rol');
   const divTienda = document.getElementById('vista-tienda');
@@ -207,20 +254,6 @@ function obtenerProductoWhatsApp() {
   mensaje += `-------------------------------------------\n💰 *TOTAL NETO:* ${Monedas[estado.paisActual]}${(total || 0).toLocaleString()}`;
   window.open(`https://api.whatsapp.com/send?phone=3022237839&text=${encodeURIComponent(mensaje)}`, '_blank');
 }
-
-function abrirLoginAdmin() { 
-  let pinAdmin = prompt("🔐 Ingrese la clave maestra del sistema administrativo:");
-  if (pinAdmin === null) return;
-  
-  if(pinAdmin === PINES.admin) { 
-    document.getElementById('vista-seleccion-rol')?.classList.add('hidden'); 
-    document.getElementById('vista-tienda')?.classList.add('hidden'); 
-    document.getElementById('vista-admin')?.classList.remove('hidden'); 
-    renderizarTablaAdminProductos(); 
-  } else { alert("❌ PIN de Administrador Inválido."); }
-}
-
-function cerrarAdmin() { document.getElementById('vista-admin')?.classList.add('hidden'); actualizarVistaVenta(); }
 
 function sincronizarCamposAdmin() {
   const elements = {
