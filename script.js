@@ -8,6 +8,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
+// PINES Y PRECIOS BASE ORIGINALES + SOPORTE INTERNACIONAL
 let PINES = { admin: "3859", CO: "2233", MX: "3344", AR: "4455", USDEUR: "5566" };
 let COMBOS = { CO: 35000, MX: 199, AR: 2500, USDEUR: 9.99 };
 let PRODUCTOS = [];
@@ -17,8 +18,7 @@ let estado = {
   rolActual: 'cliente', 
   carrito: [], 
   comboSeleccionado: [null, null, null],
-  monedaGlobalUS: 'USD',
-  flujoPinSolicitado: '' 
+  monedaGlobalUS: 'USD'
 };
 
 const Monedas = { 
@@ -29,7 +29,7 @@ const Monedas = {
 };
 
 // ==========================================
-// ESCUCHAR CAMBIOS EN TIEMPO REAL (FIREBASE)
+// ESCUCHAR EN TIEMPO REAL DESDE LA NUBE
 // ==========================================
 db.ref().on('value', (snapshot) => {
   const data = snapshot.val();
@@ -41,77 +41,29 @@ db.ref().on('value', (snapshot) => {
 });
 
 // ==========================================
-// MANEJO DE FLUJO DE PANTALLAS DE ACCESO
+// LÓGICA DE VALIDACIÓN DE PIN ORIGINAL (PROMPT)
 // ==========================================
-function seleccionarRolDirecto(rol) {
-  estado.rolActual = rol;
-  document.getElementById('etiqueta-rol').innerText = 'Cliente';
-  
-  document.getElementById('pantalla-perfiles').classList.add('hidden');
-  document.getElementById('interfaz-catalogo').classList.remove('hidden');
-  
-  renderizarProductos();
-  renderizarCarrito();
-}
-
-function mostrarVistaPin(tipo) {
-  estado.flujoPinSolicitado = tipo;
-  if (tipo === 'admin') {
-    document.getElementById('titulo-pin').innerText = '👑 Acceso de Administrador';
+function validarPinAcceso(pinIngresado) {
+  if (pinIngresado === PINES.admin) {
+    estado.rolActual = 'admin';
+    document.getElementById('etiqueta-rol').innerText = 'Administrador';
+    alert("👑 Modo Administrador Global Conectado.");
+    if (typeof abrirPanelAdmin === 'function') abrirPanelAdmin();
+  } else if (pinIngresado === PINES[estado.paisActual]) {
+    estado.rolActual = 'revendedor';
+    document.getElementById('etiqueta-rol').innerText = `Revendedor (${estado.paisActual})`;
+    alert(`💼 Modo Revendedor Autorizado (${estado.paisActual}) Activo.`);
   } else {
-    document.getElementById('titulo-pin').innerText = '🤝 Acceso para Revendedores';
-  }
-  document.getElementById('pantalla-perfiles').classList.add('hidden');
-  document.getElementById('pantalla-pin').classList.remove('hidden');
-  document.getElementById('input-pin-seguro').value = '';
-  document.getElementById('input-pin-seguro').focus();
-}
-
-function regresarAInicioPerfiles() {
-  document.getElementById('pantalla-pin').classList.add('hidden');
-  document.getElementById('pantalla-perfiles').classList.remove('hidden');
-}
-
-function cerrarSesion() {
-  estado.carrito = [];
-  estado.comboSeleccionado = [null, null, null];
-  document.getElementById('interfaz-catalogo').classList.add('hidden');
-  document.getElementById('pantalla-perfiles').classList.remove('hidden');
-}
-
-function procesarPinFormulario() {
-  const pin = document.getElementById('input-pin-seguro').value;
-  
-  if (estado.flujoPinSolicitado === 'admin') {
-    if (pin === PINES.admin) {
-      estado.rolActual = 'admin';
-      document.getElementById('etiqueta-rol').innerText = 'Administrador';
-      alert("👑 Modo Administrador Global Conectado.");
-      document.getElementById('pantalla-pin').classList.add('hidden');
-      document.getElementById('interfaz-catalogo').classList.remove('hidden');
-      if (typeof abrirPanelAdmin === 'function') abrirPanelAdmin();
-    } else {
-      alert("❌ Código PIN de Administrador incorrecto.");
-      return;
-    }
-  } else if (estado.flujoPinSolicitado === 'revendedor') {
-    if (pin === PINES[estado.paisActual]) {
-      estado.rolActual = 'revendedor';
-      document.getElementById('etiqueta-rol').innerText = `Revendedor (${estado.paisActual})`;
-      alert(`💼 Modo Revendedor Autorizado (${estado.paisActual}) Activo.`);
-      document.getElementById('pantalla-pin').classList.add('hidden');
-      document.getElementById('interfaz-catalogo').classList.remove('hidden');
-    } else {
-      alert(`❌ PIN incorrecto para la región seleccionada (${estado.paisActual}).`);
-      return;
-    }
+    estado.rolActual = 'cliente';
+    document.getElementById('etiqueta-rol').innerText = 'Cliente';
+    alert("❌ PIN Incorrecto. Ingresando como Cliente Final.");
   }
   renderizarProductos();
   renderizarCarrito();
 }
 
 // ==========================================
-// CAMBIO DE REGIONES Y MONEDAS
+// NAVEGACIÓN DE PAÍSES Y CONTROLES
 // ==========================================
 function cambiarPais(pais) {
   estado.paisActual = pais;
@@ -129,6 +81,7 @@ function cambiarPais(pais) {
     botonActivo.classList.add('border-amber-500', 'text-amber-600');
   }
 
+  // Actualizar etiqueta de rol según el país
   if (estado.rolActual === 'revendedor') {
     document.getElementById('etiqueta-rol').innerText = `Revendedor (${pais})`;
   } else if (estado.rolActual === 'admin') {
@@ -166,7 +119,7 @@ function cambiarMonedaInternacional(nuevaMoneda) {
 }
 
 // ==========================================
-// RENDERIZAR PRODUCTOS EN PANTALLA
+// RENDERIZADO DE PRODUCTOS ORIGINAL
 // ==========================================
 function renderizarProductos() {
   const container = document.getElementById('contenedor-productos');
@@ -184,7 +137,6 @@ function renderizarProductos() {
     const precio = estado.rolActual === 'revendedor' ? prod.precioRevendedor : prod.precioCliente;
     const precioTexto = `${Monedas[estado.paisActual]}${Number(precio).toLocaleString()}`;
     
-    // Condición limpia para ocultar el botón Combo si se es revendedor
     let botonComboHTML = '';
     if (estado.rolActual !== 'revendedor') {
       botonComboHTML = `<button onclick="seleccionarParaCombo('${prod.id}')" class="bg-amber-500 text-white text-xs font-bold px-3 py-2.5 rounded-xl hover:bg-amber-600 transition-all cursor-pointer">➕ Combo</button>`;
@@ -209,13 +161,13 @@ function renderizarProductos() {
 }
 
 // ==========================================
-// CONTROL DEL CARRITO Y ACCIONES
+// LOGICA DE AGREGAR ELEMENTOS Y COMBOS ORIGINAL
 // ==========================================
 function agregarAlCarrito(id) {
-  const prod = PRODUCTOS.find(p => p.id === id || String(p.id) === String(id));
+  const prod = PRODUCTOS.find(p => String(p.id) === String(id));
   if (!prod) return;
 
-  const itemExistente = estado.carrito.find(item => item.producto.id === prod.id);
+  const itemExistente = estado.carrito.find(item => String(item.producto.id) === String(prod.id));
   if (itemExistente) {
     itemExistente.cantidad++;
   } else {
@@ -225,7 +177,7 @@ function agregarAlCarrito(id) {
 }
 
 function seleccionarParaCombo(id) {
-  const prod = PRODUCTOS.find(p => p.id === id || String(p.id) === String(id));
+  const prod = PRODUCTOS.find(p => String(p.id) === String(id));
   if (!prod) return;
 
   const slotLibre = estado.comboSeleccionado.findIndex(slot => slot === null);
@@ -243,11 +195,11 @@ function quitarDelCombo(idx) {
 }
 
 function cambiarCantidad(id, cambio) {
-  const item = estado.carrito.find(item => item.producto.id === id || String(item.producto.id) === String(id));
+  const item = estado.carrito.find(item => String(item.producto.id) === String(id));
   if (!item) return;
   item.cantidad += cambio;
   if (item.cantidad <= 0) {
-    estado.carrito = estado.carrito.filter(i => i.producto.id !== item.producto.id);
+    estado.carrito = estado.carrito.filter(i => String(i.producto.id) !== String(id));
   }
   renderizarCarrito();
 }
@@ -259,7 +211,6 @@ function renderizarCarrito() {
 
   let total = 0;
 
-  // Renderizar Carrito regular
   estado.carrito.forEach(item => {
     const precioUnidad = estado.rolActual === 'revendedor' ? item.producto.precioRevendedor : item.producto.precioCliente;
     const subtotalItem = precioUnidad * item.cantidad;
@@ -280,7 +231,6 @@ function renderizarCarrito() {
     `;
   });
 
-  // Mostrar slots de Combos si no es revendedor
   const pCombo = estado.comboSeleccionado.filter(p => p !== null).length;
   
   if (estado.rolActual !== 'revendedor') {
@@ -323,7 +273,7 @@ function renderizarCarrito() {
 }
 
 // ==========================================
-// SALIDA WHATSAPP
+// SALIDA WHATSAPP ORIGINAL
 // ==========================================
 function obtenerProductoWhatsApp() {
   const pCombo = estado.comboSeleccionado.filter(p => p !== null);
