@@ -19,7 +19,7 @@
       <h1 class="text-3xl font-black text-amber-500 tracking-wider">EDWAUGE.VIP</h1>
     </div>
 
-    <div class="bg-white rounded-3xl p-8 max-w-md w-full shadow-md border border-gray-100 text-center relative">
+    <div class="bg-white rounded-3xl p-8 max-w-md w-full shadow-md border border-gray-100 text-center">
       <h2 class="text-gray-800 font-bold text-lg sm:text-xl mb-6">Selecciona tu tipo de perfil para continuar:</h2>
       
       <div class="space-y-4">
@@ -27,14 +27,14 @@
           👤 Soy Cliente
         </button>
         
-        <button onclick="mostrarVistaPinRevendedor()" class="w-full bg-gray-50 hover:bg-gray-100 text-gray-800 border border-gray-200 font-bold py-4 px-6 rounded-2xl transition-all flex items-center justify-center gap-2 cursor-pointer text-base">
+        <button onclick="mostrarVistaPin('revendedor')" class="w-full bg-gray-50 hover:bg-gray-100 text-gray-800 border border-gray-200 font-bold py-4 px-6 rounded-2xl transition-all flex items-center justify-center gap-2 cursor-pointer text-base">
           🤝 Soy Revendedor
         </button>
-      </div>
 
-      <button onclick="mostrarVistaPinAdmin()" class="mt-8 text-xs text-gray-400 hover:text-amber-500 font-medium transition-all block mx-auto underline cursor-pointer">
-        Ingresar como Administrador
-      </button>
+        <button onclick="mostrarVistaPin('admin')" class="w-full bg-gray-800 hover:bg-gray-900 text-white font-bold py-4 px-6 rounded-2xl transition-all flex items-center justify-center gap-2 cursor-pointer text-base">
+          👑 Soy Administrador
+        </button>
+      </div>
     </div>
   </div>
 
@@ -83,7 +83,7 @@
       <section class="lg:col-span-2">
         <h2 class="text-lg font-black text-gray-800 mb-4 flex items-center gap-2">✨ Servicios Disponibles</h2>
         <div id="contenedor-productos" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <p class="text-center text-gray-400 py-8 text-sm col-span-2">Cargando catálogo...</p>
+          <p class="text-center text-gray-400 py-8 text-sm col-span-2">Cargando productos de la base de datos...</p>
         </div>
       </section>
 
