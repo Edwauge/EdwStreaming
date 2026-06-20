@@ -31,7 +31,6 @@ function cambiarPais(codigoPais) {
   estado.carrito = []; 
   estado.comboSeleccionado = [null, null, null];
   
-  // CORRECCIÓN: Ahora incluye 'USDEUR' para que no rompa el cambio de clases
   ['CO', 'MX', 'AR', 'USDEUR'].forEach(p => {
     const btn = document.getElementById(`tab-${p}`);
     if (btn) {
@@ -147,13 +146,34 @@ function cerrarLoginAdmin() { document.getElementById('modal-pin-admin').classLi
 function validarPinAdmin() { if(document.getElementById('input-modal-pin-admin').value === PINES.admin) { cerrarLoginAdmin(); document.getElementById('vista-seleccion-rol').classList.add('hidden'); document.getElementById('vista-tienda').classList.add('hidden'); document.getElementById('vista-admin').classList.remove('hidden'); renderizarTablaAdminProductos(); } else { alert("❌ PIN Inválido."); }}
 function cerrarAdmin() { document.getElementById('vista-admin').classList.add('hidden'); actualizarVistaVenta(); }
 
+// CORRECCIÓN SEGURO: Valida la existencia de cada elemento antes de asignarle valor para evitar congelamientos si falta en el HTML
 function sincronizarCamposAdmin() {
-  document.getElementById('input-pin-admin').value = PINES.admin; document.getElementById('input-pin-co').value = PINES.CO; document.getElementById('input-pin-mx').value = PINES.MX; document.getElementById('input-pin-ar').value = PINES.AR;
-  document.getElementById('input-combo-co').value = COMBOS.CO; document.getElementById('input-combo-mx').value = COMBOS.MX; document.getElementById('input-combo-ar').value = COMBOS.AR;
+  const elements = {
+    'input-pin-admin': PINES.admin, 'input-pin-co': PINES.CO, 'input-pin-mx': PINES.MX, 'input-pin-ar': PINES.AR, 'input-pin-usdeur': PINES.USDEUR,
+    'input-combo-co': COMBOS.CO, 'input-combo-mx': COMBOS.MX, 'input-combo-ar': COMBOS.AR, 'input-combo-usdeur': COMBOS.USDEUR
+  };
+  for (let id in elements) {
+    const el = document.getElementById(id);
+    if (el) el.value = elements[id];
+  }
 }
 
-function guardarConfiguracionPines() { PINES.admin = document.getElementById('input-pin-admin').value.trim(); PINES.CO = document.getElementById('input-pin-co').value.trim(); PINES.MX = document.getElementById('input-pin-mx').value.trim(); PINES.AR = document.getElementById('input-pin-ar').value.trim(); guardarEnLocalStorage(); alert("🔑 PINs guardados."); }
-function guardarPreciosCombo() { COMBOS.CO = parseFloat(document.getElementById('input-combo-co').value) || 0; COMBOS.MX = parseFloat(document.getElementById('input-combo-mx').value) || 0; COMBOS.AR = parseFloat(document.getElementById('input-combo-ar').value) || 0; guardarEnLocalStorage(); alert("💰 Tarifas Combo guardadas."); }
+function guardarConfiguracionPines() { 
+  PINES.admin = document.getElementById('input-pin-admin')?.value.trim() || PINES.admin; 
+  PINES.CO = document.getElementById('input-pin-co')?.value.trim() || PINES.CO; 
+  PINES.MX = document.getElementById('input-pin-mx')?.value.trim() || PINES.MX; 
+  PINES.AR = document.getElementById('input-pin-ar')?.value.trim() || PINES.AR; 
+  if(document.getElementById('input-pin-usdeur')) PINES.USDEUR = document.getElementById('input-pin-usdeur').value.trim();
+  guardarEnLocalStorage(); alert("🔑 PINs guardados."); 
+}
+
+function guardarPreciosCombo() { 
+  COMBOS.CO = parseFloat(document.getElementById('input-combo-co')?.value) || COMBOS.CO; 
+  COMBOS.MX = parseFloat(document.getElementById('input-combo-mx')?.value) || COMBOS.MX; 
+  COMBOS.AR = parseFloat(document.getElementById('input-combo-ar')?.value) || COMBOS.AR; 
+  if(document.getElementById('input-combo-usdeur')) COMBOS.USDEUR = parseFloat(document.getElementById('input-combo-usdeur').value) || 0;
+  guardarEnLocalStorage(); alert("💰 Tarifas Combo guardadas."); 
+}
 
 function guardarProducto() {
   const indexStr = document.getElementById('form-product-index').value;
