@@ -7,13 +7,27 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-let PINES = { admin: "3859", CO: "2233", MX: "3344", AR: "4455" };
-let COMBOS = { CO: 35000, MX: 199, AR: 2500 };
+// CORRECCIÓN: Añadido PIN para US ("5566")
+let PINES = { admin: "3859", CO: "2233", MX: "3344", AR: "4455", US: "5566" };
+// CORRECCIÓN: Añadido precio base del Combo para US (ejemplo: 9.99 USD)
+let COMBOS = { CO: 35000, MX: 199, AR: 2500, US: 9.99 };
 let PRODUCTOS = [];
 
-let estado = { paisActual: 'CO', rolActual: null, carrito: [], comboSeleccionado: [null, null, null] };
-const Monedas = { CO: 'COP $', MX: 'MXN $', AR: 'ARS $' };
+let estado = { 
+  paisActual: 'CO', 
+  rolActual: null, 
+  carrito: [], 
+  comboSeleccionado: [null, null, null],
+  monedaGlobalUS: 'USD' // Controla si se muestra USD o EUR en la pestaña internacional
+};
 
+// CORRECCIÓN: Soporte dinámico para evaluar si se usa USD o EUR
+const Monedas = { 
+  CO: 'COP $', 
+  MX: 'MXN $', 
+  AR: 'ARS $',
+  get US() { return estado.monedaGlobalUS === 'USD' ? 'USD $' : 'EUR €'; }
+};
 // ESCUCHAR CAMBIOS EN TIEMPO REAL DESDE LA NUBE
 db.ref().on('value', (snapshot) => {
   const data = snapshot.val();
@@ -243,4 +257,35 @@ function renderizarTablaAdminProductos() {
   PRODUCTOS.forEach((prod, index) => {
     tbody.innerHTML += `<tr class="hover:bg-gray-50 text-gray-700"><td class="p-3.5 text-xs font-bold font-mono text-yellow-600">${prod.pais}</td><td class="p-3.5"><span class="bg-gray-100 text-gray-600 text-[10px] uppercase font-black px-2 py-0.5 rounded">${prod.categoria}</span></td><td class="p-3.5 font-bold text-gray-800 text-xs">${prod.nombre}</td><td class="p-3.5">${prod.agotado ? '<span class="bg-red-50 text-red-600 border border-red-200 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase">Agotado</span>' : '<span class="bg-emerald-50 text-emerald-600 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase">Disponible</span>'}</td><td class="p-3.5 text-xs font-black">${Monedas[prod.pais]}${prod.precioCliente.toLocaleString()}</td><td class="p-3.5 text-xs font-black">${Monedas[prod.pais]}${prod.precioRevendedor.toLocaleString()}</td><td class="p-3.5 text-center"><button onclick="editarProducto(${index})" class="bg-gray-100 hover:bg-yellow-100 text-gray-600 text-xs font-bold py-1 px-3 rounded-lg border border-gray-200">Editar</button> <button onclick="eliminarProducto(${index})" class="bg-red-50 text-red-500 text-xs font-bold py-1 px-3 rounded-lg border border-red-200">Borrar</button></td></tr>`;
   });
+}
+// FUNCIÓN PARA MOSTRAR EL SELECTOR DE MONEDA DE FORMA AUTOMÁTICA
+function chequearPestañaInternacional(pais) {
+  estado.paisActual = pais;
+  estado.carrito = []; // Limpiar carrito para evitar errores de moneda
+  estado.comboSeleccionado = [null, null, null];
+  
+  const contenedorFiltroMoneda = document.getElementById('selector-moneda-us');
+  if (!contenedorFiltroMoneda) return;
+
+  if (pais === 'US') {
+    contenedorFiltroMoneda.innerHTML = `
+      <div class="flex justify-center gap-4 my-4 p-2 bg-gray-50 rounded-xl border border-gray-100 max-w-xs mx-auto shadow-xs">
+        <button onclick="cambiarMonedaInternacional('USD')" class="flex-1 py-2 text-xs font-black rounded-lg transition-all ${estado.monedaGlobalUS === 'USD' ? 'bg-amber-500 text-white shadow-md scale-105' : 'bg-white text-gray-700 border border-gray-200'}">Ver en USD ($)</button>
+        <button onclick="cambiarMonedaInternacional('EUR')" class="flex-1 py-2 text-xs font-black rounded-lg transition-all ${estado.monedaGlobalUS === 'EUR' ? 'bg-amber-500 text-white shadow-md scale-105' : 'bg-white text-gray-700 border border-gray-200'}">Ver en EUR (€)</button>
+      </div>
+    `;
+  } else {
+    contenedorFiltroMoneda.innerHTML = '';
+  }
+}
+
+// Función de apoyo para refrescar la pantalla con la nueva moneda
+function cambiarMonedaInternacional(nuevaMoneda) {
+  estado.monedaGlobalUS = nuevaMoneda;
+  chequearPestañaInternacional('US');
+  if (typeof renderizarProductos === 'function') {
+    renderizarProductos();
+  } else if (typeof filtrarProductos === 'function') {
+    filtrarProductos();
+  }
 }
