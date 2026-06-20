@@ -300,7 +300,13 @@ function obtenerProductoWhatsApp() {
   let mensaje = `👋 ¡Hola *Edwauge.Vip*! Me interesa adquirir los siguientes servicios de streaming:\n\n🌍 *Catálogo Regional:* ${estado.paisActual === 'USDEUR' ? 'USD-EUR' : estado.paisActual}\n👤 *Perfil:* ${estado.rolActual}\n-------------------------------------------\n`;
   
   let totalCOP = 0, totalMXN = 0, totalARS = 0, totalUSD = 0, totalEUR = 0;
-  let usaCO = false, usaMX = false, usaAR = false, usaUSD = false, usaEUR = false;
+  
+  // Forzamos la activación de la región actual para asegurar que se muestren sus métodos de pago
+  let usaCO = (estado.paisActual === 'CO');
+  let usaMX = (estado.paisActual === 'MX');
+  let usaAR = (estado.paisActual === 'AR');
+  let usaUSD = (estado.paisActual === 'USDEUR'); // Por defecto activamos USD para el catálogo global
+  let usaEUR = false;
 
   // 1. Procesar Carrito Normal
   estado.carrito.forEach(item => {
@@ -329,7 +335,7 @@ function obtenerProductoWhatsApp() {
       if(estado.paisActual === 'CO') { totalCOP += valorPromocion; usaCO = true; }
       if(estado.paisActual === 'MX') { totalMXN += valorPromocion; usaMX = true; }
       if(estado.paisActual === 'AR') { totalARS += valorPromocion; usaAR = true; }
-      if(estado.paisActual === 'USDEUR') { totalUSD += valorPromocion; usaUSD = true; } // Por defecto combo global se cobra en USD
+      if(estado.paisActual === 'USDEUR') { totalUSD += valorPromocion; usaUSD = true; }
     } else {
       // Si el combo está incompleto, se cobra individual
       mensaje += `\n⚠️ *Combo Incompleto (Cobro individual):*\n`;
@@ -346,13 +352,13 @@ function obtenerProductoWhatsApp() {
 
   // 3. Imprimir Totales Finales netos por moneda
   mensaje += `-------------------------------------------\n💵 *TOTALES NETOS A PAGAR:*`;
-  if(usaCO) mensaje += `\n👉 *Total COP:* ${SimbolosMoneda.COP}${totalCOP.toLocaleString()}`;
-  if(usaMX) mensaje += `\n👉 *Total MXN:* ${SimbolosMoneda.MXN}${totalMXN.toLocaleString()}`;
-  if(usaAR) mensaje += `\n👉 *Total ARS:* ${SimbolosMoneda.ARS}${totalARS.toLocaleString()}`;
-  if(usaUSD) mensaje += `\n👉 *Total USD:* ${SimbolosMoneda.USD}${totalUSD.toLocaleString()}`;
-  if(usaEUR) mensaje += `\n👉 *Total EUR:* ${SimbolosMoneda.EUR}${totalEUR.toLocaleString()}`;
+  if(usaCO || totalCOP > 0) mensaje += `\n👉 *Total COP:* ${SimbolosMoneda.COP}${totalCOP.toLocaleString()}`;
+  if(usaMX || totalMXN > 0) mensaje += `\n👉 *Total MXN:* ${SimbolosMoneda.MXN}${totalMXN.toLocaleString()}`;
+  if(usaAR || totalARS > 0) mensaje += `\n👉 *Total ARS:* ${SimbolosMoneda.ARS}${totalARS.toLocaleString()}`;
+  if(usaUSD || totalUSD > 0) mensaje += `\n👉 *Total USD:* ${SimbolosMoneda.USD}${totalUSD.toLocaleString()}`;
+  if(usaEUR || totalEUR > 0) mensaje += `\n👉 *Total EUR:* ${SimbolosMoneda.EUR}${totalEUR.toLocaleString()}`;
   
-  // 4. INYECCIÓN AUTOMÁTICA DE MÉTODOS DE PAGO SEGÚN MONEDAS UTILIZADAS
+  // 4. INYECCIÓN AUTOMÁTICA DE MÉTODOS DE PAGO SEGÚN MONEDAS UTILIZADAS O PESTAÑA ACTIVA
   mensaje += `\n\n-------------------------------------------\n📌 *MÉTODOS DE PAGO DISPONIBLES:*\n`;
   if(usaCO) mensaje += `\n${METODOS_PAGO.CO}\n`;
   if(usaMX) mensaje += `\n${METODOS_PAGO.MX}\n`;
