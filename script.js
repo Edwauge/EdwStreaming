@@ -147,13 +147,27 @@ function renderizarCarrito() {
 function obtenerProductoWhatsApp() {
   const pCombo = estado.comboSeleccionado.filter(p => p !== null);
   if (estado.carrito.length === 0 && pCombo.length === 0) { alert("🛒 Tu carrito está vacío."); return; }
+  
   let mensaje = `👋 ¡Hola *Edwauge.Vip*! Me interesa adquirir los siguientes productos de Streaming:\n\n🌍 *Catálogo:* ${estado.paisActual}\n👤 *Perfil:* ${estado.rolActual}\n-------------------------------------------\n`;
   let total = 0;
+  
+  // 1. Agregar productos del carrito normal (si hay)
   estado.carrito.forEach(item => {
     const pU = estado.rolActual === 'cliente' ? item.producto.precioCliente : item.producto.precioRevendedor;
-    total += pU * item.cantidad; mensaje += `📦 *${item.cantidad}x* ${item.producto.nombre} (${Monedas[estado.paisActual]}${(pU * item.cantidad).toLocaleString()})\n`;
+    total += pU * item.cantidad; 
+    mensaje += `📦 *${item.cantidad}x* ${item.producto.nombre} (${Monedas[estado.paisActual]}${(pU * item.cantidad).toLocaleString()})\n`;
   });
-  if (estado.rolActual === 'cliente' && pCombo.length === 3) { total += COMBOS[estado.paisActual]; mensaje += `\n🔥 *Súper Combo Especial (3 Productos):* ${Monedas[estado.paisActual]}${COMBOS[estado.paisActual].toLocaleString()}\n`; }
+  
+  // 2. CORRECCIÓN: Agregar los 3 productos detallados del Combo Especial
+  if (estado.rolActual === 'cliente' && pCombo.length === 3) { 
+    total += COMBOS[estado.paisActual]; 
+    mensaje += `\n🔥 *Súper Combo Especial (3 Productos):*\n`;
+    pCombo.forEach((prod, idx) => {
+      mensaje += `  ✨ *Item ${idx + 1}:* ${prod.nombre}\n`;
+    });
+    mensaje += `💰 *Precio Combo:* ${Monedas[estado.paisActual]}${COMBOS[estado.paisActual].toLocaleString()}\n`; 
+  }
+  
   mensaje += `-------------------------------------------\n💰 *TOTAL NETO:* ${Monedas[estado.paisActual]}${total.toLocaleString()}`;
   window.open(`https://api.whatsapp.com/send?phone=3022237839&text=${encodeURIComponent(mensaje)}`, '_blank');
 }
