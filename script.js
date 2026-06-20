@@ -11,14 +11,8 @@ let PINES = JSON.parse(localStorage.getItem('ev_pines')) || defaultPines;
 let COMBOS = JSON.parse(localStorage.getItem('ev_combos')) || defaultCombos;
 let PRODUCTOS = JSON.parse(localStorage.getItem('ev_productos')) || defaultProductos;
 
-// Guardamos la moneda secundaria por si necesitas renderizar dinámicamente USD o EUR
-let estado = { paisActual: 'CO', rolActual: null, carrito: [], comboSeleccionado: [null, null, null], monedaInternacional: 'USD' };
-const Monedas = { 
-  CO: 'COP $', 
-  MX: 'MXN $', 
-  AR: 'ARS $',
-  USDEUR: 'USD $' // Moneda base para la sección internacional
-};
+let estado = { paisActual: 'CO', rolActual: null, carrito: [], comboSeleccionado: [null, null, null] };
+const Monedas = { CO: 'COP $', MX: 'MXN $', AR: 'ARS $', USDEUR: 'USD $' };
 
 window.onload = function() {
   guardarEnLocalStorage();
@@ -37,11 +31,13 @@ function cambiarPais(codigoPais) {
   estado.carrito = []; 
   estado.comboSeleccionado = [null, null, null];
   
-  // Lista de pestañas incluyendo la nueva pestaña internacional
+  // CORRECCIÓN: Ahora incluye 'USDEUR' para que no rompa el cambio de clases
   ['CO', 'MX', 'AR', 'USDEUR'].forEach(p => {
     const btn = document.getElementById(`tab-${p}`);
     if (btn) {
-      btn.className = p === codigoPais ? "flex-1 py-4 text-center font-bold text-sm sm:text-base border-b-2 border-yellow-500 text-yellow-600 transition-all" : "flex-1 py-4 text-center font-bold text-sm sm:text-base border-b-2 border-transparent text-gray-400 hover:text-gray-700 transition-all";
+      btn.className = p === codigoPais 
+        ? "flex-1 py-4 text-center font-bold text-sm sm:text-base border-b-2 border-yellow-500 text-yellow-600 transition-all" 
+        : "flex-1 py-4 text-center font-bold text-sm sm:text-base border-b-2 border-transparent text-gray-400 hover:text-gray-700 transition-all";
     }
   });
   estado.rolActual = null;
@@ -51,7 +47,7 @@ function cambiarPais(codigoPais) {
 function seleccionarRol(rol) { estado.rolActual = rol; actualizarVistaVenta(); }
 
 function abrirModalPinRol() { 
-  document.getElementById('modal-pin-rol-pais').innerText = estado.paisActual === 'CO' ? 'Colombia' : estado.paisActual === 'MX' ? 'México' : estado.paisActual === 'AR' ? 'Argentina' : 'USD-EUR'; 
+  document.getElementById('modal-pin-rol-pais').innerText = estado.paisActual === 'CO' ? 'Colombia' : estado.paisActual === 'MX' ? 'México' : estado.paisActual === 'AR' ? 'Argentina' : 'Internacional'; 
   document.getElementById('input-modal-pin-rol').value = ''; 
   document.getElementById('modal-pin-rol').classList.remove('hidden'); 
 }
