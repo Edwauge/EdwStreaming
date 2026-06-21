@@ -1,16 +1,25 @@
-// Base de datos inicial
-const defaultPines = { admin: "3859", CO: "2233", MX: "3344", AR: "4455", USDEUR: "5566" };
-const defaultCombos = { CO: 35000, MX: 199, AR: 2500, USDEUR: 10 };
-const defaultProductos = [
-  { nombre: "SPOTIFY PREMIUM - 1 Año Cuenta Nueva", categoria: "Spotify", pais: "CO", moneda: "COP", precioCliente: 45000, precioRevendedor: 38000, agotado: false },
-  { nombre: "Netflix - 1 Perfil UHD Premium (Mes)", categoria: "Netflix", pais: "CO", moneda: "COP", precioCliente: 15000, precioRevendedor: 11000, agotado: false },
-  { nombre: "Disney+ - 1 Perfil Estándar (Mes)", categoria: "Disney+", pais: "CO", moneda: "COP", precioCliente: 10000, precioRevendedor: 7500, agotado: false },
-  { nombre: "Netflix - 1 Perfil UHD Premium (Mes)", categoria: "Netflix", pais: "MX", moneda: "MXN", precioCliente: 89, precioRevendedor: 65, agotado: false },
-  { nombre: "Crunchyroll Mega Fan - 1 Mes", categoria: "Crunchyroll", pais: "USDEUR", moneda: "USD", precioCliente: 5, precioRevendedor: 3.5, agotado: false },
-  { nombre: "IPTV Premium Europeo - 1 Mes", categoria: "Otros", pais: "USDEUR", moneda: "EUR", precioCliente: 6, precioRevendedor: 4.5, agotado: false }
-];
+// CONFIGURACIÓN DE TU BASE DE DATOS FIREBASE (REEMPLAZA CON TUS DATOS REALES)
+const firebaseConfig = {
+  apiKey: "AIzaSyALCWvd0moFMEPsF2vmTCaA4gypY8muypw",
+  authDomain: "edwstreaming-55d3f.firebaseapp.com",
+  databaseURL: "https://edwstreaming-55d3f-default-rtdb.firebaseio.com",
+  projectId: "edwstreaming-55d3f",
+  storageBucket: "edwstreaming-55d3f.firebasestorage.app",
+  messagingSenderId: "931099489737",
+  appId: "1:931099489737:web:7f4d25b9f595b73d06a418",
+  measurementId: "G-HYFX136YD5"
+};
 
-// Estructura dura de métodos de pago solicitados
+// Inicializar Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// Variables globales del sistema
+let PINES = { admin: "3859", CO: "2233", MX: "3344", AR: "4455", USDEUR: "5566" };
+let COMBOS = { CO: 35000, MX: 199, AR: 2500, USDEUR: 10 };
+let PRODUCTOS = [];
+
+// Métodos de pago fijos
 const METODOS_PAGO = {
   CO: "*🇨🇴 MÉTODOS DE PAGO COLOMBIA:*\n• *Nequi:* 3022237839 a nombre de Edwin Rincon\n• *Llave:* 3022237839",
   MX: "*🇲🇽 MÉTODOS DE PAGO MÉXICO:*\n• *Clabe:* 728969000103900679\n• *Banco:* Spin Oxxo\n• *Beneficiario:* Mauricio Moreno",
@@ -19,10 +28,48 @@ const METODOS_PAGO = {
   EUR: "*💶 MÉTODOS DE PAGO EUROS (EUR):*\n• *Bizum:* Miguel - 682903023"
 };
 
-let PINES = JSON.parse(localStorage.getItem('ev_pines')) || defaultPines;
-let COMBOS = JSON.parse(localStorage.getItem('ev_combos')) || defaultCombos;
-let PRODUCTOS = JSON.parse(localStorage.getItem('ev_productos')) || defaultProductos;
+let estado = { paisActual: 'CO', rolActual: null, carrito: [], comboSeleccionado: [null, null, null], tipoModalActivo: null };
+const SimbolosMoneda = { COP: 'COP $', MXN: 'MXN $', ARS: 'ARS $', USD: 'USD $', EUR: 'EUR €' };
 
+// Carga Inicial Automática desde la Nube
+window.onload = function() {
+  escucharBaseDeDatos();
+};
+
+// Función mágica que escucha cambios en tiempo real a nivel mundial
+function escucharBaseDeDatos() {
+  db.ref('streaming_system').on('value', (snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+      if (data.pines) PINES = data.pines;
+      if (data.combos) COMBOS = data.combos;
+      // Convertir el objeto de productos de Firebase en una lista Array para tu diseño
+      PRODUCTOS = data.productos ? Object.values(data.productos) : [];
+    } else {
+      // Si la base de datos está totalmente vacía en el primer uso, la inicializamos
+      enviarDatosAFirebase();
+    }
+    sincronizarCamposAdmin();
+    actualizarVistaVenta();
+    if (document.getElementById('vista-admin').classList.contains('hidden') === false) {
+      renderizarTablaAdminProductos();
+    }
+  });
+}
+
+// Sube los datos locales hacia la nube de Google
+function enviarDatosAFirebase() {
+  db.ref('streaming_system').set({
+    pines: PINES,
+    combos: COMBOS,
+    productos: PRODUCTOS
+  });
+}
+
+// Reemplazo de la antigua función local por la sincronización en la nube
+function guardarEnLocalStorage() {
+  enviarDatosAFirebase();
+}
 let estado = { paisActual: 'CO', rolActual: null, carrito: [], comboSeleccionado: [null, null, null], tipoModalActivo: null };
 const SimbolosMoneda = { COP: 'COP $', MXN: 'MXN $', ARS: 'ARS $', USD: 'USD $', EUR: 'EUR €' };
 
