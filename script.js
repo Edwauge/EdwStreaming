@@ -175,7 +175,11 @@ function actualizarVistaVenta() {
   const divTienda = document.getElementById('vista-tienda');
   const divAdmin = document.getElementById('vista-admin');
   
-  if(divAdmin) divAdmin.classList.add('hidden');
+  // CORRECCIÓN: Si el admin ya está trabajando en su panel, NO lo expulses de la vista
+  if (divAdmin && !divAdmin.classList.contains('hidden')) {
+    renderizarTablaAdminProductos();
+    return; 
+  }
   
   if (!estado.rolActual) { 
     if(divSeleccion) divSeleccion.classList.remove('hidden'); 
@@ -440,16 +444,18 @@ function guardarProducto() {
   if (!nombre) { alert("⚠️ Escribe el nombre del producto."); return; }
   const estructura = { nombre, categoria, pais, moneda, precioCliente, precioRevendedor, agotado };
 
-  if (indexStr === "") { 
-    PRODUCTOS.push(estructura); 
+  if (indexStr === "") {
+    PRODUCTOS.push(estructura);
   } else {
     const idx = parseInt(indexStr);
     PRODUCTOS[idx] = estructura;
   }
-  
+
+  // === AQUÍ HACES EL CAMBIO ===
   enviarDatosAFirebase(); 
   limpiarFormularioProducto(); 
-  alert("✨ Cuenta de streaming guardada y sincronizada globalmente.");
+  renderizarTablaAdminProductos(); // <- Añade esta línea aquí para refrescar la tabla
+  alert("✨ Cuenta de streaming actualizada en inventario.");
 }
 
 function editarProducto(idx) {
