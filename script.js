@@ -31,7 +31,7 @@ const METODOS_PAGO = {
 let estado = { paisActual: 'CO', rolActual: null, carrito: [], comboSeleccionado: [null, null, null], tipoModalActivo: null };
 const SimbolosMoneda = { COP: 'COP $', MXN: 'MXN $', ARS: 'ARS $', USD: 'USD $', EUR: 'EUR €' };
 
-// Carga Inicial Automática desde la Nube
+// Carga Inicial Automática desde la Nube (Solamente un onload)
 window.onload = function() {
   escucharBaseDeDatos();
 };
@@ -43,15 +43,13 @@ function escucharBaseDeDatos() {
     if (data) {
       if (data.pines) PINES = data.pines;
       if (data.combos) COMBOS = data.combos;
-      // Convertir el objeto de productos de Firebase en una lista Array para tu diseño
       PRODUCTOS = data.productos ? Object.values(data.productos) : [];
     } else {
-      // Si la base de datos está totalmente vacía en el primer uso, la inicializamos
       enviarDatosAFirebase();
     }
     sincronizarCamposAdmin();
     actualizarVistaVenta();
-    if (document.getElementById('vista-admin').classList.contains('hidden') === false) {
+    if (document.getElementById('vista-admin') && !document.getElementById('vista-admin').classList.contains('hidden')) {
       renderizarTablaAdminProductos();
     }
   });
@@ -64,25 +62,6 @@ function enviarDatosAFirebase() {
     combos: COMBOS,
     productos: PRODUCTOS
   });
-}
-
-// Reemplazo de la antigua función local por la sincronización en la nube
-function guardarEnLocalStorage() {
-  enviarDatosAFirebase();
-}
-let estado = { paisActual: 'CO', rolActual: null, carrito: [], comboSeleccionado: [null, null, null], tipoModalActivo: null };
-const SimbolosMoneda = { COP: 'COP $', MXN: 'MXN $', ARS: 'ARS $', USD: 'USD $', EUR: 'EUR €' };
-
-window.onload = function() {
-  guardarEnLocalStorage();
-  sincronizarCamposAdmin();
-  actualizarVistaVenta();
-};
-
-function guardarEnLocalStorage() {
-  localStorage.setItem('ev_pines', JSON.stringify(PINES));
-  localStorage.setItem('ev_combos', JSON.stringify(COMBOS));
-  localStorage.setItem('ev_productos', JSON.stringify(PRODUCTOS));
 }
 
 function cambiarPais(codigoPais) {
@@ -188,7 +167,7 @@ function obtenerPrefijoMonedaBase(pais) {
   if (pais === 'CO') return 'COP $';
   if (pais === 'MX') return 'MXN $';
   if (pais === 'AR') return 'ARS $';
-  return 'USD $'; // Backup combo unificado
+  return 'USD $';
 }
 
 function actualizarVistaVenta() {
@@ -282,7 +261,6 @@ function renderizarCarrito() {
   container.innerHTML = '';
   let subtotalNormal = 0;
   
-  // Agrupar visualmente por moneda en caso de mezcla en la lista de compras ordinaria
   estado.carrito.forEach((item, index) => {
     const pU = estado.rolActual === 'cliente' ? item.producto.precioCliente : item.producto.precioRevendedor;
     subtotalNormal += (pU * item.cantidad);
@@ -307,7 +285,6 @@ function renderizarCarrito() {
     }
   }
   
-  // El texto del total visual reflejará la moneda principal del panel actual
   const totalImpreso = calcularTotalParaVisualizacion();
   const txtTotal = document.getElementById('total-carrito-texto');
   if(txtTotal) txtTotal.innerText = totalImpreso;
@@ -318,12 +295,12 @@ function calcularTotalParaVisualizacion() {
   let monedaBase = 'COP';
   if (estado.paisActual === 'MX') monedaBase = 'MXN';
   if (estado.paisActual === 'AR') monedaBase = 'ARS';
-  if (estado.paisActual === 'USDEUR') monedaBase = 'USD'; // Por defecto muestra USD en barra si mezcla
+  if (estado.paisActual === 'USDEUR') monedaBase = 'USD';
   
   estado.carrito.forEach(item => {
     const pU = estado.rolActual === 'cliente' ? item.producto.precioCliente : item.producto.precioRevendedor;
     total += pU * item.cantidad;
-    monedaBase = item.producto.moneda; // Toma la de los productos añadidos
+    monedaBase = item.producto.moneda;
   });
   
   const pCombo = estado.comboSeleccionado.filter(p => p !== null).length;
@@ -348,14 +325,12 @@ function obtenerProductoWhatsApp() {
   
   let totalCOP = 0, totalMXN = 0, totalARS = 0, totalUSD = 0, totalEUR = 0;
   
-  // Forzamos la activación de la región actual para asegurar que se muestren sus métodos de pago
   let usaCO = (estado.paisActual === 'CO');
   let usaMX = (estado.paisActual === 'MX');
   let usaAR = (estado.paisActual === 'AR');
-  let usaUSD = (estado.paisActual === 'USDEUR'); // Por defecto activamos USD para el catálogo global
+  let usaUSD = (estado.paisActual === 'USDEUR');
   let usaEUR = false;
 
-  // 1. Procesar Carrito Normal
   estado.carrito.forEach(item => {
     const pU = estado.rolActual === 'cliente' ? item.producto.precioCliente : item.producto.precioRevendedor;
     const sub = pU * item.cantidad;
@@ -369,7 +344,6 @@ function obtenerProductoWhatsApp() {
     if(item.producto.moneda === 'EUR') { totalEUR += sub; usaEUR = true; }
   });
 
-  // 2. Procesar Combo 3 Especial de Clientes (CON DESGLOSE DE PRODUCTOS)
   if (estado.rolActual === 'cliente' && pCombo.length > 0) {
     if (pCombo.length === 3) {
       const valorPromocion = COMBOS[estado.paisActual] || 0;
@@ -384,7 +358,6 @@ function obtenerProductoWhatsApp() {
       if(estado.paisActual === 'AR') { totalARS += valorPromocion; usaAR = true; }
       if(estado.paisActual === 'USDEUR') { totalUSD += valorPromocion; usaUSD = true; }
     } else {
-      // Si el combo está incompleto, se cobra individual
       mensaje += `\n⚠️ *Combo Incompleto (Cobro individual):*\n`;
       pCombo.forEach(p => {
         mensaje += `📦 *1x* ${p.nombre} (${SimbolosMoneda[p.moneda]}${p.precioCliente.toLocaleString()})\n`;
@@ -397,7 +370,6 @@ function obtenerProductoWhatsApp() {
     }
   }
 
-  // 3. Imprimir Totales Finales netos por moneda
   mensaje += `-------------------------------------------\n💵 *TOTALES NETOS A PAGAR:*`;
   if(usaCO || totalCOP > 0) mensaje += `\n👉 *Total COP:* ${SimbolosMoneda.COP}${totalCOP.toLocaleString()}`;
   if(usaMX || totalMXN > 0) mensaje += `\n👉 *Total MXN:* ${SimbolosMoneda.MXN}${totalMXN.toLocaleString()}`;
@@ -405,7 +377,6 @@ function obtenerProductoWhatsApp() {
   if(usaUSD || totalUSD > 0) mensaje += `\n👉 *Total USD:* ${SimbolosMoneda.USD}${totalUSD.toLocaleString()}`;
   if(usaEUR || totalEUR > 0) mensaje += `\n👉 *Total EUR:* ${SimbolosMoneda.EUR}${totalEUR.toLocaleString()}`;
   
-  // 4. INYECCIÓN AUTOMÁTICA DE MÉTODOS DE PAGO SEGÚN MONEDAS UTILIZADAS O PESTAÑA ACTIVA
   mensaje += `\n\n-------------------------------------------\n📌 *MÉTODOS DE PAGO DISPONIBLES:*\n`;
   if(usaCO) mensaje += `\n${METODOS_PAGO.CO}\n`;
   if(usaMX) mensaje += `\n${METODOS_PAGO.MX}\n`;
@@ -429,35 +400,37 @@ function sincronizarCamposAdmin() {
   }
 }
 
+// CORRECCIÓN: Guardar en la Nube Firebase directamente
 function guardarConfiguracionPines() { 
   PINES.admin = document.getElementById('input-pin-admin')?.value.trim() || PINES.admin; 
   PINES.CO = document.getElementById('input-pin-co')?.value.trim() || PINES.CO; 
   PINES.MX = document.getElementById('input-pin-mx')?.value.trim() || PINES.MX; 
   PINES.AR = document.getElementById('input-pin-ar')?.value.trim() || PINES.AR; 
   PINES.USDEUR = document.getElementById('input-pin-usdeur')?.value.trim() || PINES.USDEUR; 
-  guardarEnLocalStorage(); alert("🔑 PINs guardados exitosamente."); 
+  enviarDatosAFirebase(); alert("🔑 PINs guardados y sincronizados en la nube."); 
 }
 
+// CORRECCIÓN: Sincronizar Combos en la Nube
 function guardarPreciosCombo() { 
   COMBOS.CO = parseFloat(document.getElementById('input-combo-co')?.value) || COMBOS.CO; 
   COMBOS.MX = parseFloat(document.getElementById('input-combo-mx')?.value) || COMBOS.MX; 
   COMBOS.AR = parseFloat(document.getElementById('input-combo-ar')?.value) || COMBOS.AR; 
   COMBOS.USDEUR = parseFloat(document.getElementById('input-combo-usdeur')?.value) || COMBOS.USDEUR; 
-  guardarEnLocalStorage(); alert("💰 Tarifas Combo guardadas exitosamente."); 
+  enviarDatosAFirebase(); alert("💰 Tarifas Combo sincronizadas en la nube."); 
 }
 
+// CORRECCIÓN: Añadir o Actualizar Productos en la Nube
 function guardarProducto() {
   const indexStr = document.getElementById('form-product-index').value;
   const nombre = document.getElementById('form-product-nombre').value.trim();
   const categoria = document.getElementById('form-product-categoria').value;
   const pais = document.getElementById('form-product-pais').value;
   
-  // Establecer moneda correspondiente automáticamente o por selector
   let moneda = "COP";
   if (pais === 'MX') moneda = "MXN";
   if (pais === 'AR') moneda = "ARS";
   if (pais === 'USDEUR') {
-    moneda = document.getElementById('form-product-moneda').value; // Toma USD o EUR
+    moneda = document.getElementById('form-product-moneda').value;
   }
 
   const precioCliente = parseFloat(document.getElementById('form-product-precio-cliente').value) || 0;
@@ -467,12 +440,16 @@ function guardarProducto() {
   if (!nombre) { alert("⚠️ Escribe el nombre del producto."); return; }
   const estructura = { nombre, categoria, pais, moneda, precioCliente, precioRevendedor, agotado };
 
-  if (indexStr === "") { PRODUCTOS.push(estructura); } 
-  else {
+  if (indexStr === "") { 
+    PRODUCTOS.push(estructura); 
+  } else {
     const idx = parseInt(indexStr);
     PRODUCTOS[idx] = estructura;
   }
-  guardarEnLocalStorage(); limpiarFormularioProducto(); renderizarTablaAdminProductos(); alert("✨ Cuenta de streaming actualizada en inventario.");
+  
+  enviarDatosAFirebase(); 
+  limpiarFormularioProducto(); 
+  alert("✨ Cuenta de streaming guardada y sincronizada globalmente.");
 }
 
 function editarProducto(idx) {
@@ -493,11 +470,11 @@ function editarProducto(idx) {
   window.scrollTo({ top: 100, behavior: 'smooth' });
 }
 
+// CORRECCIÓN: Eliminar en Firebase
 function eliminarProducto(idx) {
   if (confirm("🗑️ ¿Deseas eliminar este producto permanentemente de la base de datos?")) {
     PRODUCTOS.splice(idx, 1); 
-    guardarEnLocalStorage(); 
-    renderizarTablaAdminProductos();
+    enviarDatosAFirebase(); 
   }
 }
 
