@@ -22,7 +22,7 @@ let PRODUCTOS = [];
 // Métodos de pago fijos
 const METODOS_PAGO = {
   CO: "*🇨🇴 MÉTODOS DE PAGO COLOMBIA:*\n• *Nequi:* 3022237839 a nombre de Edwin Rincon\n• *Llave:* 3022237839",
-  MX: "*🇲🇽 MÉTODOS DE PAGO MÉXICO:*\n• *Clabe:* 728969000103900679\n• *Banco:* Spin Oxxo\n• *Beneficiario:* Mauricio Moreno",
+  MX: "*🇲🇽 MÉTODOS DE PAGO MÉXICO:*\n• *Clabe:* 728969000022435500\n• *Banco:* Spin Oxxo\n• *Beneficiario:* Andrea Cuiriz",
   AR: "*🇦🇷 MÉTODOS DE PAGO ARGENTINA:*\n• *CBU:* 4530000800012376220236\n• *Alias:* rodre.nx",
   USD: "*💵 MÉTODOS DE PAGO DÓLARES (USD):*\n• *Zelle:* oscar (Preguntar correo al interno)\n• *Binance ID:* 7324301025\n• *ID 2:* 167282077",
   EUR: "*💶 MÉTODOS DE PAGO EUROS (EUR):*\n• *Bizum:* Miguel - 682903023"
