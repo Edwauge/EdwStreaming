@@ -390,7 +390,7 @@ function obtenerProductoWhatsApp() {
   
   mensaje += `\n*Nota:* Por favor envíame el comprobante de pago una vez realices la transferencia para procesar tus pantallas de inmediato. 🚀`;
 
-  window.open(`https://api.whatsapp.com/send?phone=3022237839&text=${encodeURIComponent(mensaje)}`, '_blank');
+  window.open(`https://api.whatsapp.com/send?phone=+573022237839&text=${encodeURIComponent(mensaje)}`, '_blank');
 }
 
 function sincronizarCamposAdmin() {
