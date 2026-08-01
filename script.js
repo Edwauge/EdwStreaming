@@ -8,7 +8,7 @@
 const firebaseConfig = {
   apiKey: "AIzaSyDummyKeyForTemplatePurposesOnly",
   authDomain: "edwstreaming-eba93.firebaseapp.com",
-  databaseURL: "https://edwstreaming-eba93-default-rtdb.firebaseio.com",
+  databaseURL: "https://edwstreaming-55d3f-default-rtdb.firebaseio.com/",
   projectId: "edwstreaming-eba93",
   storageBucket: "edwstreaming-eba93.appspot.com",
   messagingSenderId: "123456789",
