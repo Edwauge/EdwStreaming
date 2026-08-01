@@ -6,13 +6,7 @@
 // 1. CONFIGURACIÓN E INICIALIZACIÓN DE FIREBASE
 // --------------------------------------------------------------------------
 const firebaseConfig = {
-  apiKey: "AIzaSyDummyKeyForTemplatePurposesOnly",
-  authDomain: "edwstreaming-eba93.firebaseapp.com",
-  databaseURL: "https://edwstreaming-55d3f-default-rtdb.firebaseio.com/",
-  projectId: "edwstreaming-eba93",
-  storageBucket: "edwstreaming-eba93.appspot.com",
-  messagingSenderId: "123456789",
-  appId: "1:123456789:web:abcdef"
+  databaseURL: "https://edwstreaming-55d3f-default-rtdb.firebaseio.com/"
 };
 
 // Inicializar Firebase solo si no existe una instancia activa
