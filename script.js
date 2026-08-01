@@ -49,16 +49,13 @@ let modoPinDestino = '';
 // Escuchar cambios en la lista de productos
 database.ref('productos').on('value', (snapshot) => {
   const data = snapshot.val();
-  console.log("📦 Datos recibidos de Firebase (productos):", data);
+  console.log("Datos recibidos de Firebase (productos):", data);
 
   if (data) {
     if (Array.isArray(data)) {
       PRODUCTOS = data.filter(item => item !== null && item !== undefined);
     } else if (typeof data === 'object') {
-      // Convertir objeto de Firebase (con IDs dinámicos) a Array reteniendo el ID
-      PRODUCTOS = Object.keys(data).map(key => {
-        return typeof data[key] === 'object' ? { _fbKey: key, ...data[key] } : data[key];
-      });
+      PRODUCTOS = Object.keys(data).map(key => data[key]);
     } else {
       PRODUCTOS = [];
     }
@@ -242,24 +239,11 @@ function renderizarCatalogo() {
 
   contenedor.innerHTML = '';
 
-  // Filtrado flexible tolerante a minúsculas o espacios
-  let productosFiltrados = PRODUCTOS.filter(p => {
-    if (!p) return false;
-    const pPais = (p.pais || '').toString().trim().toUpperCase();
-    const pActivo = paisActivo.toString().trim().toUpperCase();
-    
-    // Soporte para variaciones habituales en BD
-    if (pActivo === 'CO') return pPais === 'CO' || pPais === 'COLOMBIA';
-    if (pActivo === 'MX') return pPais === 'MX' || pPais === 'MEXICO' || pPais === 'MÉXICO';
-    if (pActivo === 'AR') return pPais === 'AR' || pPais === 'ARGENTINA';
-    if (pActivo === 'USDEUR') return pPais === 'USDEUR' || pPais === 'USD' || pPais === 'EUR' || pPais === 'GLOBAL';
-    
-    return pPais === pActivo;
-  });
+  let productosFiltrados = PRODUCTOS.filter(p => p && p.pais === paisActivo);
 
   if (filtroCategoria !== 'TODAS') {
     productosFiltrados = productosFiltrados.filter(p => 
-      (p.categoria || '').toString().toUpperCase() === filtroCategoria.toUpperCase()
+      (p.categoria || '').toUpperCase() === filtroCategoria.toUpperCase()
     );
   }
 
@@ -274,7 +258,7 @@ function renderizarCatalogo() {
   if (productosFiltrados.length === 0) {
     contenedor.innerHTML = `
       <div class="col-span-2 bg-white p-8 rounded-xl border border-gray-200 text-center">
-        <p class="text-gray-400 text-sm font-medium">No se encontraron servicios disponibles para este catálogo (${paisActivo}).</p>
+        <p class="text-gray-400 text-sm font-medium">No hay servicios disponibles en este catálogo actualmente.</p>
       </div>
     `;
     return;
@@ -283,23 +267,19 @@ function renderizarCatalogo() {
   const moneda = obtenerMonedaPorPais(paisActivo);
 
   productosFiltrados.forEach((prod) => {
-    const precioRaw = perfilActivo === 'REVENDEDOR' 
-      ? (prod.precioRevendedor ?? prod.precio_revendedor ?? prod.precioDistribuidor ?? 0)
-      : (prod.precioCliente ?? prod.precio_cliente ?? prod.precio ?? 0);
-      
-    const precioFormateado = parseFloat(precioRaw || 0).toLocaleString();
-    const nombreProd = prod.nombre || prod.title || 'Servicio';
-    const catProd = prod.categoria || prod.platform || 'STREAMING';
+    const precio = perfilActivo === 'REVENDEDOR' 
+      ? (prod.precioRevendedor || 0) 
+      : (prod.precioCliente || 0);
 
     contenedor.innerHTML += `
       <div class="bg-white p-4 rounded-xl border border-gray-200 flex justify-between items-center shadow-sm hover:shadow-md transition">
         <div>
           <span class="text-[10px] font-extrabold text-amber-500 uppercase tracking-wider block mb-0.5">
-            ${catProd}
+            ${prod.categoria || 'STREAMING'}
           </span>
-          <h4 class="text-sm font-bold text-gray-800">${nombreProd}</h4>
+          <h4 class="text-sm font-bold text-gray-800">${prod.nombre}</h4>
           <p class="text-xs text-gray-500 font-semibold mt-1">
-            ${moneda} $${precioFormateado}
+            ${moneda} $${parseFloat(precio).toLocaleString()}
           </p>
         </div>
         <div class="flex items-center gap-1.5">
@@ -364,14 +344,13 @@ function renderizarSlotsCombo() {
   for (let i = 0; i < 3; i++) {
     const prod = comboSeleccionado[i];
     if (prod) {
-      const nombreProd = prod.nombre || prod.title || 'Servicio';
       contenedor.innerHTML += `
         <div class="relative bg-white text-gray-800 p-2.5 rounded-xl flex flex-col justify-center items-center shadow text-center border border-amber-200">
           <button onclick="quitarDelCombo(${i})" class="absolute -top-1.5 -right-1.5 bg-red-500 hover:bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold shadow">
             ✕
           </button>
           <span class="text-[9px] font-black text-amber-600 uppercase tracking-widest">Cuenta ${i + 1}</span>
-          <p class="text-xs font-bold leading-tight mt-0.5 text-gray-800 line-clamp-2">${nombreProd}</p>
+          <p class="text-xs font-bold leading-tight mt-0.5 text-gray-800 line-clamp-2">${prod.nombre}</p>
         </div>
       `;
     } else {
@@ -427,7 +406,7 @@ function actualizarCarritoVista() {
     const precioCombo = tarifasCombo[paisActivo] || 0;
     totalGeneral += parseFloat(precioCombo);
 
-    let nombresCombo = comboSeleccionado.map(c => c.nombre || c.title).join(' + ');
+    let nombresCombo = comboSeleccionado.map(c => c.nombre).join(' + ');
 
     contenedor.innerHTML += `
       <div class="bg-amber-50 border border-amber-200 p-2.5 rounded-xl text-xs mb-2">
@@ -442,21 +421,17 @@ function actualizarCarritoVista() {
   }
 
   carritoNormal.forEach((item, idx) => {
-    const precioRaw = perfilActivo === 'REVENDEDOR' 
-      ? (item.precioRevendedor ?? item.precio_revendedor ?? item.precioDistribuidor ?? 0)
-      : (item.precioCliente ?? item.precio_cliente ?? item.precio ?? 0);
-
-    totalGeneral += parseFloat(precioRaw) || 0;
-    const nombreItem = item.nombre || item.title || 'Servicio';
+    const precio = perfilActivo === 'REVENDEDOR' ? (item.precioRevendedor || 0) : (item.precioCliente || 0);
+    totalGeneral += parseFloat(precio);
 
     contenedor.innerHTML += `
       <div class="flex justify-between items-center text-xs bg-gray-50 p-2.5 rounded-xl border border-gray-100 mb-2">
         <div>
-          <p class="font-semibold text-gray-800">${nombreItem}</p>
+          <p class="font-semibold text-gray-800">${item.nombre}</p>
           <span class="text-[10px] text-gray-400 uppercase">${item.categoria || 'SERVICIO'}</span>
         </div>
         <div class="flex items-center gap-2">
-          <span class="font-bold text-amber-600">$${parseFloat(precioRaw).toLocaleString()}</span>
+          <span class="font-bold text-amber-600">$${parseFloat(precio).toLocaleString()}</span>
           <button onclick="quitarDelCarrito(${idx})" class="text-red-500 hover:text-red-700 font-bold px-1">✕</button>
         </div>
       </div>
@@ -492,7 +467,7 @@ function enviarPedidoWhatsApp() {
 
     mensaje += `⚡ *SÚPER COMBO DE 3 CUENTAS:*\n`;
     comboSeleccionado.forEach((c, idx) => {
-      mensaje += `   ${idx + 1}. ${c.nombre || c.title}\n`;
+      mensaje += `   ${idx + 1}. ${c.nombre}\n`;
     });
     mensaje += `   *Precio Combo:* ${moneda} $${parseFloat(precioCombo).toLocaleString()}\n\n`;
   }
@@ -500,12 +475,9 @@ function enviarPedidoWhatsApp() {
   if (carritoNormal.length > 0) {
     mensaje += `🛒 *CUENTAS INDIVIDUALES:*\n`;
     carritoNormal.forEach((item) => {
-      const precioRaw = perfilActivo === 'REVENDEDOR' 
-        ? (item.precioRevendedor ?? item.precio_revendedor ?? item.precioDistribuidor ?? 0)
-        : (item.precioCliente ?? item.precio_cliente ?? item.precio ?? 0);
-
-      totalGeneral += parseFloat(precioRaw) || 0;
-      mensaje += `   • ${item.nombre || item.title} - $${parseFloat(precioRaw).toLocaleString()}\n`;
+      const precio = perfilActivo === 'REVENDEDOR' ? (item.precioRevendedor || 0) : (item.precioCliente || 0);
+      totalGeneral += parseFloat(precio);
+      mensaje += `   • ${item.nombre} - $${parseFloat(precio).toLocaleString()}\n`;
     });
     mensaje += `\n`;
   }
@@ -568,19 +540,18 @@ function editarProducto(index) {
   if (!prod) return;
 
   document.getElementById('form-product-index').value = index;
-  document.getElementById('form-product-nombre').value = prod.nombre || prod.title || '';
-  document.getElementById('form-product-categoria').value = prod.categoria || prod.platform || '';
+  document.getElementById('form-product-nombre').value = prod.nombre || '';
+  document.getElementById('form-product-categoria').value = prod.categoria || '';
   document.getElementById('form-product-pais').value = prod.pais || 'CO';
-  document.getElementById('form-product-precio-cliente').value = prod.precioCliente ?? prod.precio_cliente ?? prod.precio ?? 0;
-  document.getElementById('form-product-precio-revendedor').value = prod.precioRevendedor ?? prod.precio_revendedor ?? prod.precioDistribuidor ?? 0;
+  document.getElementById('form-product-precio-cliente').value = prod.precioCliente || 0;
+  document.getElementById('form-product-precio-revendedor').value = prod.precioRevendedor || 0;
   document.getElementById('form-product-agotado').checked = prod.agotado || false;
 
   window.scrollTo({ top: document.getElementById('vista-admin').offsetTop, behavior: 'smooth' });
 }
 
 function eliminarProducto(index) {
-  const nombreProd = PRODUCTOS[index].nombre || PRODUCTOS[index].title || 'este producto';
-  if (confirm(`¿Estás seguro de que deseas eliminar "${nombreProd}" del catálogo?`)) {
+  if (confirm(`¿Estás seguro de que deseas eliminar "${PRODUCTOS[index].nombre}" del catálogo?`)) {
     PRODUCTOS.splice(index, 1);
     database.ref('productos').set(PRODUCTOS)
       .then(() => {
@@ -614,21 +585,17 @@ function renderizarTablaAdminProductos() {
   }
 
   PRODUCTOS.forEach((prod, idx) => {
-    const pPais = prod.pais || 'CO';
-    const moneda = obtenerMonedaPorPais(pPais);
-    const pCliente = prod.precioCliente ?? prod.precio_cliente ?? prod.precio ?? 0;
-    const pRevendedor = prod.precioRevendedor ?? prod.precio_revendedor ?? prod.precioDistribuidor ?? 0;
-
+    const moneda = obtenerMonedaPorPais(prod.pais);
     tbody.innerHTML += `
       <tr class="border-b border-gray-100 text-xs hover:bg-gray-50">
-        <td class="p-2 font-bold text-amber-600">${pPais}</td>
+        <td class="p-2 font-bold text-amber-600">${prod.pais}</td>
         <td class="p-2 text-gray-500 uppercase">${prod.categoria || '-'}</td>
-        <td class="p-2 font-bold text-gray-800">${prod.nombre || prod.title || 'Servicio'}</td>
+        <td class="p-2 font-bold text-gray-800">${prod.nombre}</td>
         <td class="p-2 font-bold ${prod.agotado ? 'text-red-500' : 'text-emerald-500'}">
           ${prod.agotado ? 'AGOTADO' : 'DISPONIBLE'}
         </td>
-        <td class="p-2">${moneda} $${parseFloat(pCliente).toLocaleString()}</td>
-        <td class="p-2">${moneda} $${parseFloat(pRevendedor).toLocaleString()}</td>
+        <td class="p-2">${moneda} $${parseFloat(prod.precioCliente || 0).toLocaleString()}</td>
+        <td class="p-2">${moneda} $${parseFloat(prod.precioRevendedor || 0).toLocaleString()}</td>
         <td class="p-2 text-right">
           <button onclick="editarProducto(${idx})" class="bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold px-2 py-1 rounded mr-1 transition">
             Editar
@@ -680,6 +647,7 @@ function guardarTarifasAdmin() {
     USDEUR: parseFloat(document.getElementById('precio-combo-USDEUR').value) || 10
   };
 
+  database.ref('tarifasCombo').setnuevasTarifas
   database.ref('tarifasCombo').set(nuevasTarifas)
     .then(() => {
       alert("⚡ Tarifas del Súper Combo actualizadas con éxito.");
@@ -704,21 +672,14 @@ function actualizarContadoresAdmin() {
 // 14. FUNCIONES AUXILIARES Y DE FORMATO
 // --------------------------------------------------------------------------
 function obtenerMonedaPorPais(pais) {
-  const p = (pais || '').toString().trim().toUpperCase();
-  switch (p) {
+  switch (pais) {
     case 'MX':
-    case 'MEXICO':
       return 'MXN';
     case 'AR':
-    case 'ARGENTINA':
       return 'ARS';
     case 'USDEUR':
-    case 'USD':
-    case 'EUR':
-    case 'GLOBAL':
       return 'USD/EUR';
     case 'CO':
-    case 'COLOMBIA':
     default:
       return 'COP';
   }
