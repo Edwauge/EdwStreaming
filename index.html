@@ -4,14 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>EDWAUGE.VIP - Catálogo de Streaming</title>
-
-  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Firebase Compat Scripts -->
   <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
-
   <style>
     body { background-color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
     .tab-active { border-bottom: 3px solid #f59e0b; color: #d97706; font-weight: bold; }
@@ -20,7 +15,6 @@
 </head>
 <body class="text-gray-800 min-h-screen flex flex-col justify-between">
 
-  <!-- ENCABEZADO PRINCIPAL -->
   <header class="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center shadow-sm">
     <h1 class="text-2xl font-black tracking-wider text-amber-500">EDWAUGE.VIP</h1>
     <button onclick="solicitarAccesoAdmin()" class="flex items-center gap-1.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold px-3 py-1.5 rounded-lg transition">
@@ -29,8 +23,6 @@
   </header>
 
   <main class="max-w-6xl mx-auto p-4 md:p-6 w-full flex-grow">
-
-    <!-- NAVEGACIÓN POR PAÍSES / MONEDAS -->
     <div class="flex border-b border-gray-200 gap-6 text-sm font-medium mb-6 overflow-x-auto pb-1">
       <button onclick="cambiarPais('CO')" id="tab-CO" class="tab-active py-2 px-1 whitespace-nowrap">CO Catálogo Colombia</button>
       <button onclick="cambiarPais('MX')" id="tab-MX" class="text-gray-500 hover:text-gray-700 py-2 px-1 whitespace-nowrap">MX Catálogo México</button>
@@ -38,13 +30,8 @@
       <button onclick="cambiarPais('USDEUR')" id="tab-USDEUR" class="text-gray-500 hover:text-gray-700 py-2 px-1 whitespace-nowrap">🌐 Catálogo USD-EUR</button>
     </div>
 
-    <!-- VISTA PRINCIPAL DEL CATÁLOGO -->
     <div id="vista-catalogo" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-      <!-- COLUMNA IZQUIERDA Y CENTRO: SERVICIOS Y COMBOS -->
       <div class="lg:col-span-2 space-y-6">
-
-        <!-- INDICADOR DE BANDERAS Y PERFIL -->
         <div class="flex items-center justify-between text-xs font-bold text-gray-600 bg-gray-100 p-2.5 rounded-lg border border-gray-200">
           <div>
             <span>PAÍS: <strong id="lbl-pais-activo" class="text-amber-600">CO</strong></span>
@@ -53,148 +40,82 @@
           <button onclick="mostrarModalPerfil()" class="text-amber-600 hover:underline">🔄 Cambiar Perfil</button>
         </div>
 
-        <!-- SECCIÓN PROMOCIÓN ESTRELLA (SÚPER COMBO) -->
         <div class="bg-combo p-5 rounded-2xl text-white shadow-lg relative overflow-hidden">
           <span class="bg-white/20 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider">Promoción Estrella</span>
           <h2 class="text-xl font-black mt-2">¡Súper Combo de Streaming!</h2>
-          <p class="text-xs text-amber-100 mb-4">Arma tu paquete seleccionando tus productos del catálogo marcados con el botón "Combo".</p>
+          <p class="text-xs text-amber-100 mb-4">Arma tu paquete seleccionando exactamente 3 productos del catálogo marcados con el botón "Combo 3".</p>
 
-          <!-- BOTONES MODALIDAD COMBO DE 2 O COMBO DE 3 -->
-          <div class="flex gap-2 mb-4">
-            <button id="btn-modo-combo-2" onclick="cambiarModoCombo(2)" class="bg-white/20 hover:bg-white/30 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition">
-              Combo 2 Cuentas
-            </button>
-            <button id="btn-modo-combo-3" onclick="cambiarModoCombo(3)" class="bg-white text-amber-700 text-xs font-extrabold py-1.5 px-3 rounded-lg shadow transition">
-              Combo 3 Cuentas
-            </button>
-          </div>
-
-          <!-- SLOTS PARA LOS PRODUCTOS DEL COMBO -->
-          <div id="contenedor-slots-combo" class="grid grid-cols-2 md:grid-cols-3 gap-3">
-            <!-- Slots inyectados dinámicamente desde JS -->
+          <div id="contenedor-slots-combo" class="grid grid-cols-3 gap-3">
+            <div class="bg-white/10 border border-white/30 border-dashed p-3 rounded-xl flex items-center justify-center text-amber-100 text-xs">Slot 1 libre</div>
+            <div class="bg-white/10 border border-white/30 border-dashed p-3 rounded-xl flex items-center justify-center text-amber-100 text-xs">Slot 2 libre</div>
+            <div class="bg-white/10 border border-white/30 border-dashed p-3 rounded-xl flex items-center justify-center text-amber-100 text-xs">Slot 3 libre</div>
           </div>
         </div>
 
-        <!-- LISTA DE SERVICIOS DISPONIBLES -->
         <div>
           <h3 class="text-base font-bold text-gray-800 mb-4">Servicios Disponibles</h3>
-          <div id="grid-productos-catalogo" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <!-- Tarjetas de productos inyectadas desde JS -->
-          </div>
+          <div id="grid-productos-catalogo" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
         </div>
-
       </div>
 
-      <!-- COLUMNA DERECHA: TU PEDIDO / CARRITO -->
       <div class="lg:col-span-1">
         <div class="bg-white border border-gray-200 p-5 rounded-2xl shadow-sm sticky top-6">
           <div class="flex justify-between items-center mb-4 border-b border-gray-100 pb-3">
             <h3 class="font-bold text-gray-800 flex items-center gap-2">🛒 Tu Pedido</h3>
             <span class="text-xs text-gray-400">Carrito</span>
           </div>
-
           <div id="lista-carrito" class="space-y-3 min-h-[120px] text-sm text-gray-500 py-2">
             <p class="text-center text-xs text-gray-400 italic">Tu carrito está vacío.</p>
           </div>
-
           <div class="border-t border-gray-100 pt-4 mt-4">
             <div class="flex justify-between items-center text-sm font-extrabold text-gray-800 mb-4">
               <span>Total a Pagar:</span>
               <span id="lbl-total-carrito" class="text-amber-600 text-base">COP $0</span>
             </div>
-
             <button onclick="enviarPedidoWhatsApp()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 px-4 rounded-xl shadow-md transition text-sm flex items-center justify-center gap-2">
               Solicitar por WhatsApp
             </button>
           </div>
         </div>
       </div>
-
     </div>
 
-    <!-- PANEL DE GESTIÓN ADMINISTRATIVA -->
     <div id="vista-admin" class="hidden mt-8 space-y-8">
       <div class="flex justify-between items-center bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
-        <h2 class="text-xl font-black text-gray-800 flex items-center gap-2">
-          ⚙️ Panel de Gestión Administrativa
-        </h2>
-        <button onclick="salirDelAdmin()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold py-2 px-4 rounded-lg transition">
-          Salir del Panel
-        </button>
+        <h2 class="text-xl font-black text-gray-800 flex items-center gap-2">⚙️ Panel de Gestión Administrativa</h2>
+        <button onclick="salirDelAdmin()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold py-2 px-4 rounded-lg transition">Salir del Panel</button>
       </div>
 
-      <!-- CONFIGURACIÓN DE PINES Y TARIFAS -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        
-        <!-- CONTRASEÑAS Y PINES -->
         <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
           <h3 class="font-bold text-sm text-gray-700 mb-3 flex items-center gap-2">🔑 Contraseñas de Acceso (PIN)</h3>
           <div class="grid grid-cols-2 gap-3 text-xs">
-            <div>
-              <label class="block text-gray-500 mb-1">Clave Master Admin:</label>
-              <input type="password" id="pin-admin" value="9999" class="w-full border p-2 rounded">
-            </div>
-            <div>
-              <label class="block text-gray-500 mb-1">PIN Colombia (CO):</label>
-              <input type="password" id="pin-CO" value="2222" class="w-full border p-2 rounded">
-            </div>
-            <div>
-              <label class="block text-gray-500 mb-1">PIN México (MX):</label>
-              <input type="password" id="pin-MX" value="2222" class="w-full border p-2 rounded">
-            </div>
-            <div>
-              <label class="block text-gray-500 mb-1">PIN Argentina (AR):</label>
-              <input type="password" id="pin-AR" value="2222" class="w-full border p-2 rounded">
-            </div>
+            <div><label class="block text-gray-500 mb-1">Clave Master Admin:</label><input type="password" id="pin-admin" value="9999" class="w-full border p-2 rounded"></div>
+            <div><label class="block text-gray-500 mb-1">PIN Colombia (CO):</label><input type="password" id="pin-CO" value="2222" class="w-full border p-2 rounded"></div>
+            <div><label class="block text-gray-500 mb-1">PIN México (MX):</label><input type="password" id="pin-MX" value="2222" class="w-full border p-2 rounded"></div>
+            <div><label class="block text-gray-500 mb-1">PIN Argentina (AR):</label><input type="password" id="pin-AR" value="2222" class="w-full border p-2 rounded"></div>
           </div>
-          <button onclick="guardarPinesAdmin()" class="mt-4 bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-4 rounded-lg text-xs transition">
-            Actualizar Seguridad
-          </button>
+          <button onclick="guardarPinesAdmin()" class="mt-4 bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-4 rounded-lg text-xs transition">Actualizar Seguridad</button>
         </div>
 
-        <!-- TARIFAS Y REGLAS DE COMBOS -->
         <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
-          <h3 class="font-bold text-sm text-gray-700 mb-3 flex items-center gap-2">🔥 Tarifas & Control Súper Combo</h3>
+          <h3 class="font-bold text-sm text-gray-700 mb-3 flex items-center gap-2">🔥 Tarifas Súper Combo (3 Productos)</h3>
           <div class="grid grid-cols-2 gap-3 text-xs">
-            <div>
-              <label class="block text-gray-500 mb-1">Precio Combo CO:</label>
-              <input type="number" id="precio-combo-CO" value="30000" class="w-full border p-2 rounded">
-            </div>
-            <div>
-              <label class="block text-gray-500 mb-1">Precio Combo MX:</label>
-              <input type="number" id="precio-combo-MX" value="199" class="w-full border p-2 rounded">
-            </div>
-            <div>
-              <label class="block text-gray-500 mb-1">Umbral Productos Altos:</label>
-              <input type="number" id="cfg-umbral-alto" value="30000" class="w-full border p-2 rounded" placeholder="Ej: 30000">
-            </div>
-            <div>
-              <label class="block text-gray-500 mb-1">Precio Máx 3er Producto:</label>
-              <input type="number" id="cfg-max-tercero" value="10000" class="w-full border p-2 rounded" placeholder="Ej: 10000">
-            </div>
+            <div><label class="block text-gray-500 mb-1">Precio Combo CO:</label><input type="number" id="precio-combo-CO" value="30000" class="w-full border p-2 rounded"></div>
+            <div><label class="block text-gray-500 mb-1">Precio Combo MX:</label><input type="number" id="precio-combo-MX" value="199" class="w-full border p-2 rounded"></div>
+            <div><label class="block text-gray-500 mb-1">Precio Combo AR:</label><input type="number" id="precio-combo-AR" value="2500" class="w-full border p-2 rounded"></div>
+            <div><label class="block text-gray-500 mb-1">Precio Combo USD-EUR:</label><input type="number" id="precio-combo-USDEUR" value="10" class="w-full border p-2 rounded"></div>
           </div>
-          <button onclick="guardarTarifasAdmin()" class="mt-4 bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-4 rounded-lg text-xs transition">
-            Actualizar Tarifas Combo
-          </button>
+          <button onclick="guardarTarifasAdmin()" class="mt-4 bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-4 rounded-lg text-xs transition">Actualizar Tarifas Combo</button>
         </div>
-
       </div>
 
-      <!-- FORMULARIO AGREGAR / EDITAR PRODUCTO -->
       <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
         <h3 class="font-bold text-sm text-gray-700 mb-4">➕ Añadir / Modificar Cuenta de Streaming</h3>
-        
         <input type="hidden" id="form-product-index">
-
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs mb-4">
-          <div>
-            <label class="block text-gray-600 mb-1">Nombre del Producto:</label>
-            <input type="text" id="form-product-nombre" class="w-full border border-gray-300 p-2.5 rounded-lg" placeholder="Ej: Netflix 1 Pantalla">
-          </div>
-          <div>
-            <label class="block text-gray-600 mb-1">Plataforma / Categoría:</label>
-            <input type="text" id="form-product-categoria" class="w-full border border-gray-300 p-2.5 rounded-lg" placeholder="Ej: Netflix, Max, Spotify">
-          </div>
+          <div><label class="block text-gray-600 mb-1">Nombre del Producto:</label><input type="text" id="form-product-nombre" class="w-full border border-gray-300 p-2.5 rounded-lg"></div>
+          <div><label class="block text-gray-600 mb-1">Plataforma / Categoría:</label><input type="text" id="form-product-categoria" class="w-full border border-gray-300 p-2.5 rounded-lg"></div>
           <div>
             <label class="block text-gray-600 mb-1">Asignar a Catálogo:</label>
             <select id="form-product-pais" class="w-full border border-gray-300 p-2.5 rounded-lg">
@@ -204,28 +125,19 @@
               <option value="USDEUR">USD-EUR</option>
             </select>
           </div>
-          <div>
-            <label class="block text-gray-600 mb-1">Precio Final Cliente:</label>
-            <input type="number" id="form-product-precio-cliente" class="w-full border border-gray-300 p-2.5 rounded-lg" placeholder="Ej: 15000">
-          </div>
-          <div>
-            <label class="block text-gray-600 mb-1">Precio Distribuidor:</label>
-            <input type="number" id="form-product-precio-revendedor" class="w-full border border-gray-300 p-2.5 rounded-lg" placeholder="Ej: 10000">
-          </div>
+          <div><label class="block text-gray-600 mb-1">Precio Final Cliente:</label><input type="number" id="form-product-precio-cliente" class="w-full border border-gray-300 p-2.5 rounded-lg"></div>
+          <div><label class="block text-gray-600 mb-1">Precio Distribuidor:</label><input type="number" id="form-product-precio-revendedor" class="w-full border border-gray-300 p-2.5 rounded-lg"></div>
         </div>
-
         <div class="flex items-center gap-2 mb-4">
           <input type="checkbox" id="form-product-agotado" class="w-4 h-4 text-amber-500 rounded">
           <label for="form-product-agotado" class="text-xs text-gray-600">Marcar este artículo como Agotado (Sin Stock Temporal)</label>
         </div>
-
         <div class="flex gap-2">
           <button onclick="limpiarFormularioProducto()" class="bg-gray-100 text-gray-600 font-bold py-2 px-4 rounded-lg text-xs transition">Limpiar Campos</button>
           <button onclick="guardarProducto()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-5 rounded-lg text-xs transition">Guardar Cuenta en Inventario</button>
         </div>
       </div>
 
-      <!-- TABLA DE INVENTARIO -->
       <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm overflow-x-auto">
         <table class="w-full text-left border-collapse text-xs">
           <thead>
@@ -239,17 +151,12 @@
               <th class="p-2 text-right">Acciones</th>
             </tr>
           </thead>
-          <tbody id="tabla-admin-productos">
-            <!-- Carga dinámica -->
-          </tbody>
+          <tbody id="tabla-admin-productos"></tbody>
         </table>
       </div>
-
     </div>
-
   </main>
 
-  <!-- MODAL SELECCIÓN TIPO DE PERFIL -->
   <div id="modal-perfil" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
     <div class="bg-white p-6 rounded-2xl max-w-sm w-full text-center shadow-xl">
       <h3 class="font-bold text-gray-800 text-base mb-4">Selecciona tu tipo de perfil para continuar:</h3>
@@ -264,14 +171,11 @@
     </div>
   </div>
 
-  <!-- MODAL DE INGRESO DE PIN (ADMIN / REVENDEDOR) -->
   <div id="modal-pin" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
     <div class="bg-white p-6 rounded-2xl max-w-sm w-full text-center shadow-xl">
       <h3 id="modal-pin-titulo" class="font-bold text-gray-800 text-base mb-2">Acceso Revendedor</h3>
       <p id="modal-pin-subtitulo" class="text-xs text-gray-500 mb-4">Ingresa el PIN asignado al catálogo regional.</p>
-      
       <input type="password" id="input-pin" class="w-full border border-gray-300 p-2.5 rounded-xl text-center text-lg tracking-widest mb-4" placeholder="••••">
-
       <div class="flex gap-2">
         <button onclick="cerrarModalPin()" class="w-1/2 bg-gray-100 text-gray-600 font-bold py-2.5 rounded-xl text-xs">Cancelar</button>
         <button onclick="validarPinIngresado()" class="w-1/2 bg-amber-500 text-gray-900 font-bold py-2.5 rounded-xl text-xs">Verificar PIN</button>
@@ -283,7 +187,6 @@
     &copy; 2026 EDWAUGE.VIP - Todos los derechos reservados.
   </footer>
 
-  <!-- ARCHIVO PRINCIPAL SCRIPT.JS -->
   <script src="script.js"></script>
 </body>
 </html>
