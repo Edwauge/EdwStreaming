@@ -1,6 +1,3 @@
-// ==========================================
-// 1. CONFIGURACIÓN E INICIALIZACIÓN FIREBASE
-// ==========================================
 const firebaseConfig = {
   apiKey: "AIzaSyDummyKeyForTemplatePurposesOnly",
   authDomain: "edwstreaming-eba93.firebaseapp.com",
@@ -16,14 +13,9 @@ if (!firebase.apps.length) {
 }
 const database = firebase.database();
 
-// ==========================================
-// 2. ESTADO GLOBAL DE LA APLICACIÓN
-// ==========================================
 let PRODUCTOS = [];
 let paisActivo = 'CO';
 let perfilActivo = 'CLIENTE';
-
-let comboActualModo = 3; // 2 o 3 productos
 let comboSeleccionado = [];
 let carritoNormal = [];
 
@@ -35,18 +27,15 @@ let pinesSeguridad = {
   USDEUR: '2222'
 };
 
-let reglasComboControl = {
-  umbralAlto: 30000,
-  maxTerceroBarato: 10000,
-  precioComboCO: 30000,
-  precioComboMX: 199
+let tarifasCombo = {
+  CO: 30000,
+  MX: 199,
+  AR: 2500,
+  USDEUR: 10
 };
 
-let modoPinDestino = ''; // 'ADMIN' o 'REVENDEDOR'
+let modoPinDestino = '';
 
-// ==========================================
-// 3. LISTENERS DE FIREBASE (TIEMPO REAL)
-// ==========================================
 database.ref('productos').on('value', (snapshot) => {
   const data = snapshot.val();
   PRODUCTOS = data ? Object.values(data) : [];
@@ -59,36 +48,17 @@ database.ref('pinesSeguridad').on('value', (snapshot) => {
   if (data) pinesSeguridad = data;
 });
 
-database.ref('reglasComboControl').on('value', (snapshot) => {
+database.ref('tarifasCombo').on('value', (snapshot) => {
   const data = snapshot.val();
-  if (data) {
-    reglasComboControl = data;
-    if (document.getElementById('cfg-umbral-alto')) {
-      document.getElementById('cfg-umbral-alto').value = reglasComboControl.umbralAlto || 30000;
-      document.getElementById('cfg-max-tercero').value = reglasComboControl.maxTerceroBarato || 10000;
-      document.getElementById('precio-combo-CO').value = reglasComboControl.precioComboCO || 30000;
-      document.getElementById('precio-combo-MX').value = reglasComboControl.precioComboMX || 199;
-    }
-  }
+  if (data) tarifasCombo = data;
 });
 
-// ==========================================
-// 4. CAMBIO DE PESTAÑAS Y PERFILES
-// ==========================================
 function cambiarPais(pais) {
   paisActivo = pais;
-  
   ['CO', 'MX', 'AR', 'USDEUR'].forEach(p => {
     const tab = document.getElementById(`tab-${p}`);
-    if (tab) {
-      if (p === pais) {
-        tab.className = "tab-active py-2 px-1 whitespace-nowrap";
-      } else {
-        tab.className = "text-gray-500 hover:text-gray-700 py-2 px-1 whitespace-nowrap";
-      }
-    }
+    if (tab) tab.className = (p === pais) ? "tab-active py-2 px-1 whitespace-nowrap" : "text-gray-500 hover:text-gray-700 py-2 px-1 whitespace-nowrap";
   });
-
   document.getElementById('lbl-pais-activo').innerText = pais;
   renderizarCatalogo();
 }
@@ -127,7 +97,6 @@ function cerrarModalPin() {
 
 function validarPinIngresado() {
   const pinIngresado = document.getElementById('input-pin').value.trim();
-
   if (modoPinDestino === 'ADMIN') {
     if (pinIngresado === (pinesSeguridad.admin || '9999')) {
       document.getElementById('modal-pin').classList.add('hidden');
@@ -142,7 +111,7 @@ function validarPinIngresado() {
       document.getElementById('modal-pin').classList.add('hidden');
       seleccionarPerfil('REVENDEDOR');
     } else {
-      alert("❌ PIN de Revendedor Incorrecto para este país");
+      alert("❌ PIN Incorrecto para este catálogo");
     }
   }
 }
@@ -152,59 +121,11 @@ function salirDelAdmin() {
   document.getElementById('vista-catalogo').classList.remove('hidden');
 }
 
-// ==========================================
-// 5. CONTROL Y VALIDACIÓN DE COMBOS
-// ==========================================
-function cambiarModoCombo(cantidad) {
-  comboActualModo = cantidad;
-
-  const btn2 = document.getElementById('btn-modo-combo-2');
-  const btn3 = document.getElementById('btn-modo-combo-3');
-
-  if (btn2 && btn3) {
-    if (cantidad === 2) {
-      btn2.className = "bg-white text-amber-700 text-xs font-extrabold py-1.5 px-3 rounded-lg shadow transition";
-      btn3.className = "bg-white/20 hover:bg-white/30 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition";
-    } else {
-      btn3.className = "bg-white text-amber-700 text-xs font-extrabold py-1.5 px-3 rounded-lg shadow transition";
-      btn2.className = "bg-white/20 hover:bg-white/30 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition";
-    }
-  }
-
-  comboSeleccionado = [];
-  renderizarSlotsCombo();
-}
-
-function esTercerProductoPermitido(productoCandidato) {
-  if (comboActualModo !== 3 || comboSeleccionado.length < 2) return true;
-
-  const p1 = parseFloat(comboSeleccionado[0].precioCliente) || 0;
-  const p2 = parseFloat(comboSeleccionado[1].precioCliente) || 0;
-  const sumaDos = p1 + p2;
-
-  const umbral = parseFloat(reglasComboControl.umbralAlto) || 30000;
-  const maxBarato = parseFloat(reglasComboControl.maxTerceroBarato) || 10000;
-
-  if (sumaDos >= umbral) {
-    const precio3er = parseFloat(productoCandidato.precioCliente) || 0;
-    if (precio3er > maxBarato) {
-      alert(`⚠️ Elegiste 2 productos principales de alto valor. El 3er producto debe ser económico (máximo $${maxBarato.toLocaleString()}).`);
-      return false;
-    }
-  }
-  return true;
-}
-
 function agregarACombo(prod) {
-  if (comboSeleccionado.length >= comboActualModo) {
-    alert(`⚠️ Ya completaste tu Combo de ${comboActualModo} cuentas.`);
+  if (comboSeleccionado.length >= 3) {
+    alert("Ya tienes 3 productos en tu combo.");
     return;
   }
-
-  if (comboSeleccionado.length === 2 && !esTercerProductoPermitido(prod)) {
-    return;
-  }
-
   comboSeleccionado.push(prod);
   renderizarSlotsCombo();
 }
@@ -219,8 +140,7 @@ function renderizarSlotsCombo() {
   if (!contenedor) return;
 
   contenedor.innerHTML = '';
-
-  for (let i = 0; i < comboActualModo; i++) {
+  for (let i = 0; i < 3; i++) {
     const prod = comboSeleccionado[i];
     if (prod) {
       contenedor.innerHTML += `
@@ -240,26 +160,16 @@ function renderizarSlotsCombo() {
   }
 }
 
-// ==========================================
-// 6. RENDERIZADO DEL CATÁLOGO Y CARRITO
-// ==========================================
 function renderizarCatalogo() {
   const contenedor = document.getElementById('grid-productos-catalogo');
   if (!contenedor) return;
-
   contenedor.innerHTML = '';
 
   const productosFiltrados = PRODUCTOS.filter(p => p.pais === paisActivo);
 
-  if (productosFiltrados.length === 0) {
-    contenedor.innerHTML = `<p class="col-span-2 text-xs text-gray-400 py-4 italic">No hay productos disponibles para este catálogo.</p>`;
-    return;
-  }
-
   productosFiltrados.forEach((prod) => {
     const precio = perfilActivo === 'REVENDEDOR' ? prod.precioRevendedor : prod.precioCliente;
     const moneda = paisActivo === 'MX' ? 'MXN' : (paisActivo === 'USDEUR' ? 'USD' : 'COP');
-    const estaAgotado = prod.agotado;
 
     contenedor.innerHTML += `
       <div class="bg-white p-4 rounded-xl border border-gray-200 flex justify-between items-center shadow-sm">
@@ -268,13 +178,12 @@ function renderizarCatalogo() {
           <h4 class="text-sm font-bold text-gray-800">${prod.nombre}</h4>
           <p class="text-xs text-gray-500 font-semibold mt-0.5">${moneda} $${parseFloat(precio).toLocaleString()}</p>
         </div>
-
         <div class="flex gap-1.5">
-          ${estaAgotado 
+          ${prod.agotado 
             ? `<span class="text-xs text-red-500 font-bold bg-red-50 px-2 py-1 rounded">Agotado</span>`
             : `
-              <button onclick='agregarAlCarrito(${JSON.stringify(prod)})' class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold px-2.5 py-1.5 rounded-lg transition">🛒</button>
-              <button onclick='agregarACombo(${JSON.stringify(prod)})' class="bg-amber-500 hover:bg-amber-600 text-gray-900 text-xs font-extrabold px-2.5 py-1.5 rounded-lg transition">⚡ Combo</button>
+              <button onclick='agregarAlCarrito(${JSON.stringify(prod)})' class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold px-2.5 py-1.5 rounded-lg transition">🛒 Al Carrito</button>
+              <button onclick='agregarACombo(${JSON.stringify(prod)})' class="bg-amber-500 hover:bg-amber-600 text-gray-900 text-xs font-extrabold px-2.5 py-1.5 rounded-lg transition">⚡ Combo 3</button>
             `
           }
         </div>
@@ -313,7 +222,6 @@ function actualizarCarritoVista() {
   carritoNormal.forEach((item, idx) => {
     const precio = perfilActivo === 'REVENDEDOR' ? item.precioRevendedor : item.precioCliente;
     total += parseFloat(precio) || 0;
-
     contenedor.innerHTML += `
       <div class="flex justify-between items-center text-xs bg-gray-50 p-2 rounded-lg">
         <span class="font-semibold text-gray-700">${item.nombre}</span>
@@ -333,7 +241,7 @@ function enviarPedidoWhatsApp() {
 
   if (comboSeleccionado.length > 0) {
     let comboNombres = comboSeleccionado.map(c => c.nombre).join(', ');
-    mensaje += `🔥 *Súper Combo (${comboSeleccionado.length} Cuentas):* ${comboNombres}\n`;
+    mensaje += `🔥 *Súper Combo (3 Cuentas):* ${comboNombres}\n`;
   }
 
   if (carritoNormal.length > 0) {
@@ -348,13 +256,9 @@ function enviarPedidoWhatsApp() {
     return;
   }
 
-  // NÚMERO DIRECTO CON INDICATIVO DE COLOMBIA (57) SIN SIGNO '+'
   window.open(`https://api.whatsapp.com/send?phone=573022237839&text=${encodeURIComponent(mensaje)}`, '_blank');
 }
 
-// ==========================================
-// 7. FUNCIONES DEL PANEL ADMINISTRATIVO
-// ==========================================
 function guardarProducto() {
   const indexStr = document.getElementById('form-product-index').value;
   const nombre = document.getElementById('form-product-nombre').value.trim();
@@ -409,7 +313,6 @@ function eliminarProducto(idx) {
 function renderizarTablaAdminProductos() {
   const tbody = document.getElementById('tabla-admin-productos');
   if (!tbody) return;
-
   tbody.innerHTML = '';
 
   PRODUCTOS.forEach((prod, idx) => {
@@ -438,21 +341,19 @@ function guardarPinesAdmin() {
     AR: document.getElementById('pin-AR').value,
     USDEUR: '2222'
   };
-
   database.ref('pinesSeguridad').set(pinesSeguridad).then(() => {
-    alert("🔒 Pines de seguridad actualizados en Firebase.");
+    alert("🔒 Pines de seguridad actualizados.");
   });
 }
 
 function guardarTarifasAdmin() {
-  reglasComboControl = {
-    precioComboCO: parseFloat(document.getElementById('precio-combo-CO').value) || 30000,
-    precioComboMX: parseFloat(document.getElementById('precio-combo-MX').value) || 199,
-    umbralAlto: parseFloat(document.getElementById('cfg-umbral-alto').value) || 30000,
-    maxTerceroBarato: parseFloat(document.getElementById('cfg-max-tercero').value) || 10000
+  tarifasCombo = {
+    CO: parseFloat(document.getElementById('precio-combo-CO').value) || 30000,
+    MX: parseFloat(document.getElementById('precio-combo-MX').value) || 199,
+    AR: parseFloat(document.getElementById('precio-combo-AR').value) || 2500,
+    USDEUR: parseFloat(document.getElementById('precio-combo-USDEUR').value) || 10
   };
-
-  database.ref('reglasComboControl').set(reglasComboControl).then(() => {
-    alert("⚡ Tarifas y reglas de control de combos actualizadas.");
+  database.ref('tarifasCombo').set(tarifasCombo).then(() => {
+    alert("⚡ Tarifas de combo actualizadas.");
   });
 }
