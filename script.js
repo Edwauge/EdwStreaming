@@ -9,7 +9,6 @@ const firebaseConfig = {
   databaseURL: "https://edwstreaming-55d3f-default-rtdb.firebaseio.com/"
 };
 
-// Inicializar Firebase solo si no existe una instancia activa
 if (!firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
@@ -26,7 +25,6 @@ let carritoNormal = [];           // Productos individuales
 let filtroCategoria = 'TODAS';
 let busquedaTexto = '';
 
-// Pines de seguridad por catálogo
 let pinesSeguridad = {
   admin: '9999',
   CO: '2222',
@@ -35,7 +33,6 @@ let pinesSeguridad = {
   USDEUR: '2222'
 };
 
-// Tarifas dinámicas del Súper Combo por región
 let tarifasCombo = {
   CO: 30000,
   MX: 199,
@@ -43,8 +40,7 @@ let tarifasCombo = {
   USDEUR: 10
 };
 
-// Variable auxiliar para control de flujo en modales
-let modoPinDestino = ''; // 'ADMIN' | 'REVENDEDOR'
+let modoPinDestino = '';
 
 // --------------------------------------------------------------------------
 // 3. LISTENERS EN TIEMPO REAL (FIREBASE REALTIME DATABASE)
@@ -53,11 +49,23 @@ let modoPinDestino = ''; // 'ADMIN' | 'REVENDEDOR'
 // Escuchar cambios en la lista de productos
 database.ref('productos').on('value', (snapshot) => {
   const data = snapshot.val();
+  console.log("📦 Datos recibidos de Firebase (productos):", data);
+
   if (data) {
-    PRODUCTOS = Array.isArray(data) ? data : Object.values(data);
+    if (Array.isArray(data)) {
+      PRODUCTOS = data.filter(item => item !== null && item !== undefined);
+    } else if (typeof data === 'object') {
+      // Convertir objeto de Firebase (con IDs dinámicos) a Array reteniendo el ID
+      PRODUCTOS = Object.keys(data).map(key => {
+        return typeof data[key] === 'object' ? { _fbKey: key, ...data[key] } : data[key];
+      });
+    } else {
+      PRODUCTOS = [];
+    }
   } else {
     PRODUCTOS = [];
   }
+
   renderizarCatalogo();
   renderizarTablaAdminProductos();
   actualizarContadoresAdmin();
@@ -115,7 +123,6 @@ function cambiarPais(nuevoPais) {
   const lblPais = document.getElementById('lbl-pais-activo');
   if (lblPais) lblPais.innerText = nuevoPais;
 
-  // Al cambiar de país, vaciar el combo actual por diferencias de tarifa/inventario
   comboSeleccionado = [];
   renderizarSlotsCombo();
   renderizarCatalogo();
@@ -191,7 +198,7 @@ function validarPinIngresado() {
 
   if (modoPinDestino === 'ADMIN') {
     const pinMaster = pinesSeguridad.admin || '9999';
-    if (pinIngresado === pinMaster) {
+    if (pinIngresado === String(pinMaster)) {
       cerrarModalPin();
       mostrarPanelAdmin();
     } else {
@@ -199,7 +206,7 @@ function validarPinIngresado() {
     }
   } else if (modoPinDestino === 'REVENDEDOR') {
     const pinCorrecto = pinesSeguridad[paisActivo] || '2222';
-    if (pinIngresado === pinCorrecto) {
+    if (pinIngresado === String(pinCorrecto)) {
       cerrarModalPin();
       seleccionarPerfil('REVENDEDOR');
     } else {
@@ -235,19 +242,31 @@ function renderizarCatalogo() {
 
   contenedor.innerHTML = '';
 
-  // Filtrar productos por el país activo
-  let productosFiltrados = PRODUCTOS.filter(p => p.pais === paisActivo);
+  // Filtrado flexible tolerante a minúsculas o espacios
+  let productosFiltrados = PRODUCTOS.filter(p => {
+    if (!p) return false;
+    const pPais = (p.pais || '').toString().trim().toUpperCase();
+    const pActivo = paisActivo.toString().trim().toUpperCase();
+    
+    // Soporte para variaciones habituales en BD
+    if (pActivo === 'CO') return pPais === 'CO' || pPais === 'COLOMBIA';
+    if (pActivo === 'MX') return pPais === 'MX' || pPais === 'MEXICO' || pPais === 'MÉXICO';
+    if (pActivo === 'AR') return pPais === 'AR' || pPais === 'ARGENTINA';
+    if (pActivo === 'USDEUR') return pPais === 'USDEUR' || pPais === 'USD' || pPais === 'EUR' || pPais === 'GLOBAL';
+    
+    return pPais === pActivo;
+  });
 
-  // Filtrar por categoría si no es "TODAS"
   if (filtroCategoria !== 'TODAS') {
-    productosFiltrados = productosFiltrados.filter(p => p.categoria === filtroCategoria);
+    productosFiltrados = productosFiltrados.filter(p => 
+      (p.categoria || '').toString().toUpperCase() === filtroCategoria.toUpperCase()
+    );
   }
 
-  // Filtrar por texto de búsqueda
   if (busquedaTexto.trim() !== '') {
     const query = busquedaTexto.toLowerCase();
     productosFiltrados = productosFiltrados.filter(p => 
-      p.nombre.toLowerCase().includes(query) || 
+      (p.nombre && p.nombre.toLowerCase().includes(query)) || 
       (p.categoria && p.categoria.toLowerCase().includes(query))
     );
   }
@@ -255,7 +274,7 @@ function renderizarCatalogo() {
   if (productosFiltrados.length === 0) {
     contenedor.innerHTML = `
       <div class="col-span-2 bg-white p-8 rounded-xl border border-gray-200 text-center">
-        <p class="text-gray-400 text-sm font-medium">No se encontraron servicios disponibles en este catálogo.</p>
+        <p class="text-gray-400 text-sm font-medium">No se encontraron servicios disponibles para este catálogo (${paisActivo}).</p>
       </div>
     `;
     return;
@@ -264,16 +283,21 @@ function renderizarCatalogo() {
   const moneda = obtenerMonedaPorPais(paisActivo);
 
   productosFiltrados.forEach((prod) => {
-    const precio = perfilActivo === 'REVENDEDOR' ? prod.precioRevendedor : prod.precioCliente;
-    const precioFormateado = parseFloat(precio || 0).toLocaleString();
+    const precioRaw = perfilActivo === 'REVENDEDOR' 
+      ? (prod.precioRevendedor ?? prod.precio_revendedor ?? prod.precioDistribuidor ?? 0)
+      : (prod.precioCliente ?? prod.precio_cliente ?? prod.precio ?? 0);
+      
+    const precioFormateado = parseFloat(precioRaw || 0).toLocaleString();
+    const nombreProd = prod.nombre || prod.title || 'Servicio';
+    const catProd = prod.categoria || prod.platform || 'STREAMING';
 
     contenedor.innerHTML += `
       <div class="bg-white p-4 rounded-xl border border-gray-200 flex justify-between items-center shadow-sm hover:shadow-md transition">
         <div>
           <span class="text-[10px] font-extrabold text-amber-500 uppercase tracking-wider block mb-0.5">
-            ${prod.categoria || 'STREAMING'}
+            ${catProd}
           </span>
-          <h4 class="text-sm font-bold text-gray-800">${prod.nombre}</h4>
+          <h4 class="text-sm font-bold text-gray-800">${nombreProd}</h4>
           <p class="text-xs text-gray-500 font-semibold mt-1">
             ${moneda} $${precioFormateado}
           </p>
@@ -340,13 +364,14 @@ function renderizarSlotsCombo() {
   for (let i = 0; i < 3; i++) {
     const prod = comboSeleccionado[i];
     if (prod) {
+      const nombreProd = prod.nombre || prod.title || 'Servicio';
       contenedor.innerHTML += `
         <div class="relative bg-white text-gray-800 p-2.5 rounded-xl flex flex-col justify-center items-center shadow text-center border border-amber-200">
           <button onclick="quitarDelCombo(${i})" class="absolute -top-1.5 -right-1.5 bg-red-500 hover:bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold shadow">
             ✕
           </button>
           <span class="text-[9px] font-black text-amber-600 uppercase tracking-widest">Cuenta ${i + 1}</span>
-          <p class="text-xs font-bold leading-tight mt-0.5 text-gray-800 line-clamp-2">${prod.nombre}</p>
+          <p class="text-xs font-bold leading-tight mt-0.5 text-gray-800 line-clamp-2">${nombreProd}</p>
         </div>
       `;
     } else {
@@ -359,7 +384,6 @@ function renderizarSlotsCombo() {
     }
   }
 
-  // Actualizar etiqueta del valor del combo si existe en la interfaz
   const lblPrecioCombo = document.getElementById('lbl-precio-combo-activo');
   if (lblPrecioCombo) {
     lblPrecioCombo.innerText = `${moneda} $${parseFloat(precioTarifaCombo).toLocaleString()}`;
@@ -399,12 +423,11 @@ function actualizarCarritoVista() {
   let totalGeneral = 0;
   const moneda = obtenerMonedaPorPais(paisActivo);
 
-  // 1. Mostrar resumen del combo si contiene elementos
   if (comboSeleccionado.length > 0) {
     const precioCombo = tarifasCombo[paisActivo] || 0;
     totalGeneral += parseFloat(precioCombo);
 
-    let nombresCombo = comboSeleccionado.map(c => c.nombre).join(' + ');
+    let nombresCombo = comboSeleccionado.map(c => c.nombre || c.title).join(' + ');
 
     contenedor.innerHTML += `
       <div class="bg-amber-50 border border-amber-200 p-2.5 rounded-xl text-xs mb-2">
@@ -418,19 +441,22 @@ function actualizarCarritoVista() {
     `;
   }
 
-  // 2. Mostrar ítems individuales del carrito
   carritoNormal.forEach((item, idx) => {
-    const precio = perfilActivo === 'REVENDEDOR' ? item.precioRevendedor : item.precioCliente;
-    totalGeneral += parseFloat(precio) || 0;
+    const precioRaw = perfilActivo === 'REVENDEDOR' 
+      ? (item.precioRevendedor ?? item.precio_revendedor ?? item.precioDistribuidor ?? 0)
+      : (item.precioCliente ?? item.precio_cliente ?? item.precio ?? 0);
+
+    totalGeneral += parseFloat(precioRaw) || 0;
+    const nombreItem = item.nombre || item.title || 'Servicio';
 
     contenedor.innerHTML += `
       <div class="flex justify-between items-center text-xs bg-gray-50 p-2.5 rounded-xl border border-gray-100 mb-2">
         <div>
-          <p class="font-semibold text-gray-800">${item.nombre}</p>
+          <p class="font-semibold text-gray-800">${nombreItem}</p>
           <span class="text-[10px] text-gray-400 uppercase">${item.categoria || 'SERVICIO'}</span>
         </div>
         <div class="flex items-center gap-2">
-          <span class="font-bold text-amber-600">$${parseFloat(precio).toLocaleString()}</span>
+          <span class="font-bold text-amber-600">$${parseFloat(precioRaw).toLocaleString()}</span>
           <button onclick="quitarDelCarrito(${idx})" class="text-red-500 hover:text-red-700 font-bold px-1">✕</button>
         </div>
       </div>
@@ -460,25 +486,26 @@ function enviarPedidoWhatsApp() {
   mensaje += `👤 *Perfil Cliente:* ${perfilActivo}\n`;
   mensaje += `----------------------------------------\n\n`;
 
-  // Detalle del combo
   if (comboSeleccionado.length > 0) {
     const precioCombo = tarifasCombo[paisActivo] || 0;
     totalGeneral += parseFloat(precioCombo);
 
     mensaje += `⚡ *SÚPER COMBO DE 3 CUENTAS:*\n`;
     comboSeleccionado.forEach((c, idx) => {
-      mensaje += `   ${idx + 1}. ${c.nombre}\n`;
+      mensaje += `   ${idx + 1}. ${c.nombre || c.title}\n`;
     });
     mensaje += `   *Precio Combo:* ${moneda} $${parseFloat(precioCombo).toLocaleString()}\n\n`;
   }
 
-  // Detalle del carrito
   if (carritoNormal.length > 0) {
     mensaje += `🛒 *CUENTAS INDIVIDUALES:*\n`;
     carritoNormal.forEach((item) => {
-      const precio = perfilActivo === 'REVENDEDOR' ? item.precioRevendedor : item.precioCliente;
-      totalGeneral += parseFloat(precio) || 0;
-      mensaje += `   • ${item.nombre} - $${parseFloat(precio).toLocaleString()}\n`;
+      const precioRaw = perfilActivo === 'REVENDEDOR' 
+        ? (item.precioRevendedor ?? item.precio_revendedor ?? item.precioDistribuidor ?? 0)
+        : (item.precioCliente ?? item.precio_cliente ?? item.precio ?? 0);
+
+      totalGeneral += parseFloat(precioRaw) || 0;
+      mensaje += `   • ${item.nombre || item.title} - $${parseFloat(precioRaw).toLocaleString()}\n`;
     });
     mensaje += `\n`;
   }
@@ -521,14 +548,11 @@ function guardarProducto() {
   };
 
   if (indexStr === "") {
-    // Nuevo producto
     PRODUCTOS.push(productoObjeto);
   } else {
-    // Editar existente
     PRODUCTOS[parseInt(indexStr)] = productoObjeto;
   }
 
-  // Sincronizar con Firebase
   database.ref('productos').set(PRODUCTOS)
     .then(() => {
       alert("✅ Producto guardado con éxito en la base de datos.");
@@ -544,18 +568,19 @@ function editarProducto(index) {
   if (!prod) return;
 
   document.getElementById('form-product-index').value = index;
-  document.getElementById('form-product-nombre').value = prod.nombre || '';
-  document.getElementById('form-product-categoria').value = prod.categoria || '';
+  document.getElementById('form-product-nombre').value = prod.nombre || prod.title || '';
+  document.getElementById('form-product-categoria').value = prod.categoria || prod.platform || '';
   document.getElementById('form-product-pais').value = prod.pais || 'CO';
-  document.getElementById('form-product-precio-cliente').value = prod.precioCliente || 0;
-  document.getElementById('form-product-precio-revendedor').value = prod.precioRevendedor || 0;
+  document.getElementById('form-product-precio-cliente').value = prod.precioCliente ?? prod.precio_cliente ?? prod.precio ?? 0;
+  document.getElementById('form-product-precio-revendedor').value = prod.precioRevendedor ?? prod.precio_revendedor ?? prod.precioDistribuidor ?? 0;
   document.getElementById('form-product-agotado').checked = prod.agotado || false;
 
   window.scrollTo({ top: document.getElementById('vista-admin').offsetTop, behavior: 'smooth' });
 }
 
 function eliminarProducto(index) {
-  if (confirm(`¿Estás seguro de que deseas eliminar "${PRODUCTOS[index].nombre}" del catálogo?`)) {
+  const nombreProd = PRODUCTOS[index].nombre || PRODUCTOS[index].title || 'este producto';
+  if (confirm(`¿Estás seguro de que deseas eliminar "${nombreProd}" del catálogo?`)) {
     PRODUCTOS.splice(index, 1);
     database.ref('productos').set(PRODUCTOS)
       .then(() => {
@@ -589,17 +614,21 @@ function renderizarTablaAdminProductos() {
   }
 
   PRODUCTOS.forEach((prod, idx) => {
-    const moneda = obtenerMonedaPorPais(prod.pais);
+    const pPais = prod.pais || 'CO';
+    const moneda = obtenerMonedaPorPais(pPais);
+    const pCliente = prod.precioCliente ?? prod.precio_cliente ?? prod.precio ?? 0;
+    const pRevendedor = prod.precioRevendedor ?? prod.precio_revendedor ?? prod.precioDistribuidor ?? 0;
+
     tbody.innerHTML += `
       <tr class="border-b border-gray-100 text-xs hover:bg-gray-50">
-        <td class="p-2 font-bold text-amber-600">${prod.pais}</td>
+        <td class="p-2 font-bold text-amber-600">${pPais}</td>
         <td class="p-2 text-gray-500 uppercase">${prod.categoria || '-'}</td>
-        <td class="p-2 font-bold text-gray-800">${prod.nombre}</td>
+        <td class="p-2 font-bold text-gray-800">${prod.nombre || prod.title || 'Servicio'}</td>
         <td class="p-2 font-bold ${prod.agotado ? 'text-red-500' : 'text-emerald-500'}">
           ${prod.agotado ? 'AGOTADO' : 'DISPONIBLE'}
         </td>
-        <td class="p-2">${moneda} $${parseFloat(prod.precioCliente || 0).toLocaleString()}</td>
-        <td class="p-2">${moneda} $${parseFloat(prod.precioRevendedor || 0).toLocaleString()}</td>
+        <td class="p-2">${moneda} $${parseFloat(pCliente).toLocaleString()}</td>
+        <td class="p-2">${moneda} $${parseFloat(pRevendedor).toLocaleString()}</td>
         <td class="p-2 text-right">
           <button onclick="editarProducto(${idx})" class="bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold px-2 py-1 rounded mr-1 transition">
             Editar
@@ -617,13 +646,11 @@ function renderizarTablaAdminProductos() {
 // 13. CONFIGURACIÓN DE PINES Y TARIFAS DESDE EL ADMIN
 // --------------------------------------------------------------------------
 function cargarDatosFormularioAdmin() {
-  // Cargar Pines en inputs
   if (document.getElementById('pin-admin')) document.getElementById('pin-admin').value = pinesSeguridad.admin || '9999';
   if (document.getElementById('pin-CO')) document.getElementById('pin-CO').value = pinesSeguridad.CO || '2222';
   if (document.getElementById('pin-MX')) document.getElementById('pin-MX').value = pinesSeguridad.MX || '2222';
   if (document.getElementById('pin-AR')) document.getElementById('pin-AR').value = pinesSeguridad.AR || '2222';
 
-  // Cargar Tarifas de Combo en inputs
   if (document.getElementById('precio-combo-CO')) document.getElementById('precio-combo-CO').value = tarifasCombo.CO || 30000;
   if (document.getElementById('precio-combo-MX')) document.getElementById('precio-combo-MX').value = tarifasCombo.MX || 199;
   if (document.getElementById('precio-combo-AR')) document.getElementById('precio-combo-AR').value = tarifasCombo.AR || 2500;
@@ -661,7 +688,7 @@ function guardarTarifasAdmin() {
 
 function actualizarContadoresAdmin() {
   const total = PRODUCTOS.length;
-  const agotados = PRODUCTOS.filter(p => p.agotado).length;
+  const agotados = PRODUCTOS.filter(p => p && p.agotado).length;
   const disponibles = total - agotados;
 
   const elemTotal = document.getElementById('cnt-total-productos');
@@ -677,14 +704,21 @@ function actualizarContadoresAdmin() {
 // 14. FUNCIONES AUXILIARES Y DE FORMATO
 // --------------------------------------------------------------------------
 function obtenerMonedaPorPais(pais) {
-  switch (pais) {
+  const p = (pais || '').toString().trim().toUpperCase();
+  switch (p) {
     case 'MX':
+    case 'MEXICO':
       return 'MXN';
     case 'AR':
+    case 'ARGENTINA':
       return 'ARS';
     case 'USDEUR':
+    case 'USD':
+    case 'EUR':
+    case 'GLOBAL':
       return 'USD/EUR';
     case 'CO':
+    case 'COLOMBIA':
     default:
       return 'COP';
   }
