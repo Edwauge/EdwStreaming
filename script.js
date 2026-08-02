@@ -1,5 +1,5 @@
 /* ==========================================================================
-   EDWAUGE.VIP - CONEXIÓN CON CONTROL DE ERRORES Y MAPEO DE REGIONES
+   EDWAUGE.VIP - LÓGICA COMPLETA Y CONEXIÓN A 'streaming_system'
    ========================================================================== */
 
 const firebaseConfig = {
@@ -21,9 +21,11 @@ let pinesSeguridad = { admin: '9999', CO: '2222', MX: '2222', AR: '2222', USDEUR
 let tarifasCombo = { CO: 30000, MX: 199, AR: 2500, USDEUR: 10 };
 let modoPinDestino = '';
 
-// CONEXIÓN EN TIEMPO REAL CON FIREBASE
-database.ref('productos').on('value', (snapshot) => {
+// 1. CONEXIÓN PRODUCTOS
+database.ref('streaming_system/productos').on('value', (snapshot) => {
   const data = snapshot.val();
+  console.log("📦 Productos recibidos de Firebase:", data);
+
   if (data) {
     if (Array.isArray(data)) {
       PRODUCTOS = data.filter(item => item !== null && item !== undefined);
@@ -36,18 +38,22 @@ database.ref('productos').on('value', (snapshot) => {
   renderizarCatalogo();
   renderizarTablaAdminProductos();
 }, (error) => {
-  console.error("Error al conectar con Firebase: ", error);
+  console.error("Error al conectar con productos:", error);
 });
 
-database.ref('pinesSeguridad').on('value', (snapshot) => {
+// 2. CONEXIÓN PINES
+database.ref('streaming_system/pines').on('value', (snapshot) => {
   const data = snapshot.val();
   if (data) pinesSeguridad = Object.assign({}, pinesSeguridad, data);
 });
 
-database.ref('tarifasCombo').on('value', (snapshot) => {
+// 3. CONEXIÓN COMBOS
+database.ref('streaming_system/combos').on('value', (snapshot) => {
   const data = snapshot.val();
-  if (data) tarifasCombo = Object.assign({}, tarifasCombo, data);
-  renderizarSlotsCombo();
+  if (data) {
+    tarifasCombo = Object.assign({}, tarifasCombo, data);
+    renderizarSlotsCombo();
+  }
 });
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -60,7 +66,11 @@ function cambiarPais(nuevoPais) {
   paisActivo = nuevoPais;
   ['CO', 'MX', 'AR', 'USDEUR'].forEach(p => {
     const tab = document.getElementById(`tab-${p}`);
-    if (tab) tab.className = (p === nuevoPais) ? "tab-active flex items-center gap-1 cursor-pointer" : "hover:text-amber-500 flex items-center gap-1 cursor-pointer";
+    if (tab) {
+      tab.className = (p === nuevoPais) 
+        ? "tab-active flex items-center gap-1 cursor-pointer" 
+        : "hover:text-amber-500 flex items-center gap-1 cursor-pointer";
+    }
   });
 
   const lblPais = document.getElementById('lbl-pais-activo');
@@ -71,7 +81,7 @@ function cambiarPais(nuevoPais) {
   renderizarCatalogo();
 }
 
-// PERFILES Y MODALES
+// PERFILES
 function mostrarModalPerfil() { document.getElementById('modal-perfil').classList.remove('hidden'); }
 function cerrarModalPerfil() { document.getElementById('modal-perfil').classList.add('hidden'); }
 
@@ -123,6 +133,7 @@ function validarPinIngresado() {
 function mostrarPanelAdmin() {
   document.getElementById('vista-catalogo').classList.add('hidden');
   document.getElementById('vista-admin').classList.remove('hidden');
+  cargarDatosFormularioAdmin();
 }
 
 function salirDelAdmin() {
@@ -130,14 +141,13 @@ function salirDelAdmin() {
   document.getElementById('vista-catalogo').classList.remove('hidden');
 }
 
-// RENDERIZADO DEL CATÁLOGO
+// RENDERIZADO DE CATÁLOGO
 function renderizarCatalogo() {
   const contenedor = document.getElementById('grid-productos-catalogo');
   if (!contenedor) return;
 
   contenedor.innerHTML = '';
 
-  // FILTRADO CON TOLERANCIA DE FORMATEO (ej: "CO", "CO (COP)")
   let productosFiltrados = PRODUCTOS.map((p, originalIndex) => ({ ...p, originalIndex })).filter(prod => {
     if (!prod) return false;
     const strPais = (prod.pais || '').toString().toUpperCase();
@@ -160,7 +170,7 @@ function renderizarCatalogo() {
 
   productosFiltrados.forEach((prod) => {
     const precio = perfilActivo === 'REVENDEDOR' 
-      ? (prod.precioRevendedor ?? prod.precio_revendedor ?? 0)
+      ? (prod.precioRevendedor ?? prod.precio_revendedor ?? prod.precioDistribuidor ?? 0)
       : (prod.precioCliente ?? prod.precio_cliente ?? prod.precio ?? 0);
 
     const estaAgotado = prod.agotado || false;
@@ -188,7 +198,6 @@ function renderizarCatalogo() {
   });
 }
 
-// AGREGAR POR ÍNDICE (CERO ERRORES DE SINTAXIS EN HTML)
 function agregarAlCarritoPorIndice(idx) {
   if (PRODUCTOS[idx]) {
     carritoNormal.push(PRODUCTOS[idx]);
@@ -280,7 +289,7 @@ function actualizarCarritoVista() {
           <span>$${parseFloat(precioCombo).toLocaleString()}</span>
         </div>
         <p class="text-[11px] text-amber-700 mt-1 leading-tight">${nombres}</p>
-        <button onclick="vaciarCombo()" class="text-[10px] text-red-600 font-bold underline mt-1">Quitar Combo</button>
+        <button onclick="vaciarCombo()" class="text-[10px] text-red-600 font-bold underline mt-1 block">Quitar Combo</button>
       </div>
     `;
   }
@@ -366,7 +375,7 @@ function guardarProducto() {
     PRODUCTOS[parseInt(indexStr)] = prod;
   }
 
-  database.ref('productos').set(PRODUCTOS).then(() => {
+  database.ref('streaming_system/productos').set(PRODUCTOS).then(() => {
     alert("✅ Guardado correctamente.");
     limpiarFormularioProducto();
   });
@@ -388,7 +397,7 @@ function editarProducto(index) {
 function eliminarProducto(index) {
   if (confirm(`¿Eliminar "${PRODUCTOS[index].nombre}"?`)) {
     PRODUCTOS.splice(index, 1);
-    database.ref('productos').set(PRODUCTOS);
+    database.ref('streaming_system/productos').set(PRODUCTOS);
   }
 }
 
@@ -431,6 +440,42 @@ function renderizarTablaAdminProductos() {
       </tr>
     `;
   });
+}
+
+function cargarDatosFormularioAdmin() {
+  document.getElementById('pin-admin').value = pinesSeguridad.admin || '9999';
+  document.getElementById('pin-CO').value = pinesSeguridad.CO || '2222';
+  document.getElementById('pin-MX').value = pinesSeguridad.MX || '2222';
+  document.getElementById('pin-AR').value = pinesSeguridad.AR || '2222';
+  document.getElementById('pin-USDEUR').value = pinesSeguridad.USDEUR || '2222';
+
+  document.getElementById('precio-combo-CO').value = tarifasCombo.CO || 30000;
+  document.getElementById('precio-combo-MX').value = tarifasCombo.MX || 199;
+  document.getElementById('precio-combo-AR').value = tarifasCombo.AR || 2500;
+  document.getElementById('precio-combo-USDEUR').value = tarifasCombo.USDEUR || 10;
+}
+
+function guardarPinesAdmin() {
+  const nuevosPines = {
+    admin: document.getElementById('pin-admin').value.trim() || '9999',
+    CO: document.getElementById('pin-CO').value.trim() || '2222',
+    MX: document.getElementById('pin-MX').value.trim() || '2222',
+    AR: document.getElementById('pin-AR').value.trim() || '2222',
+    USDEUR: document.getElementById('pin-USDEUR').value.trim() || '2222'
+  };
+
+  database.ref('streaming_system/pines').set(nuevosPines).then(() => alert("🔒 PINs Actualizados."));
+}
+
+function guardarTarifasAdmin() {
+  const nuevasTarifas = {
+    CO: parseFloat(document.getElementById('precio-combo-CO').value) || 30000,
+    MX: parseFloat(document.getElementById('precio-combo-MX').value) || 199,
+    AR: parseFloat(document.getElementById('precio-combo-AR').value) || 2500,
+    USDEUR: parseFloat(document.getElementById('precio-combo-USDEUR').value) || 10
+  };
+
+  database.ref('streaming_system/combos').set(nuevasTarifas).then(() => alert("⚡ Tarifas Actualizadas."));
 }
 
 function obtenerMoneda(p) {
