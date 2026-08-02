@@ -5,23 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>EDWAUGE.VIP</title>
   
-  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   
-  <!-- Firebase JS SDK (v8) -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
-  <link rel="stylesheet" href="styles.css">
+  <style>
+    .tab-active {
+      border-bottom: 2px solid #f59e0b;
+      color: #f59e0b;
+    }
+  </style>
 </head>
 <body class="bg-gray-100 text-gray-800 font-sans min-h-screen flex flex-col justify-between">
 
-  <!-- ==================================================================== -->
-  <!-- VISTA CATÁLOGO (PÚBLICA)                                             -->
-  <!-- ==================================================================== -->
   <div id="vista-catalogo" class="w-full">
     
-    <!-- HEADER -->
     <header class="bg-white border-b border-gray-200">
       <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
         <h1 class="text-2xl font-black text-amber-500 tracking-wide">EDWAUGE.VIP</h1>
@@ -31,7 +30,6 @@
         </button>
       </div>
 
-      <!-- PESTAÑAS REGIONALES -->
       <div class="max-w-7xl mx-auto px-6 border-t border-gray-100 flex justify-center gap-8 text-sm font-bold text-gray-500 py-3 overflow-x-auto">
         <button id="tab-CO" onclick="cambiarPais('CO')" class="tab-active flex items-center gap-1 cursor-pointer">
           <span class="text-xs text-gray-400">CO</span> Catálogo Colombia
@@ -48,7 +46,6 @@
       </div>
     </header>
 
-    <!-- BARRA INDICADORA DE ESTADO -->
     <div id="barra-estado-perfil" class="max-w-7xl mx-auto px-6 pt-6 hidden">
       <div class="flex justify-between items-center bg-gray-50 p-3 rounded-xl border border-gray-200">
         <div class="flex items-center gap-3">
@@ -65,13 +62,10 @@
       </div>
     </div>
 
-    <!-- CONTENIDO PRINCIPAL -->
     <main class="max-w-7xl mx-auto px-6 py-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
       
-      <!-- COLUMNA IZQUIERDA -->
       <div class="lg:col-span-2 space-y-6">
 
-        <!-- BANNER SÚPER COMBO -->
         <section id="banner-combo" class="bg-gradient-to-r from-amber-500 to-amber-600 rounded-2xl p-6 text-white shadow-md hidden">
           <span class="bg-amber-400 text-amber-950 text-[10px] font-black px-2.5 py-1 rounded-md uppercase tracking-wider">Promoción Estrella</span>
           <h2 class="text-xl font-black mt-2">¡Súper Combo de Streaming!</h2>
@@ -83,7 +77,6 @@
           <div id="contenedor-slots-combo" class="grid grid-cols-3 gap-4 mt-6"></div>
         </section>
 
-        <!-- GRID DE PRODUCTOS -->
         <section>
           <h3 id="titulo-servicios" class="text-base font-black text-gray-800 mb-4 hidden">Servicios Disponibles</h3>
           <div id="grid-productos-catalogo" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
@@ -91,7 +84,6 @@
 
       </div>
 
-      <!-- COLUMNA DERECHA: CARRITO -->
       <div class="lg:col-span-1">
         <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm sticky top-6 space-y-6">
           <div class="flex justify-between items-center border-b border-gray-100 pb-4">
@@ -115,7 +107,6 @@
     </main>
   </div>
 
-  <!-- MODAL SELECCIÓN DE PERFIL -->
   <div id="modal-perfil" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl text-center space-y-6 border border-gray-100">
       <h3 class="text-lg font-black text-gray-900">Selecciona tu tipo de perfil para continuar:</h3>
@@ -130,7 +121,6 @@
     </div>
   </div>
 
-  <!-- MODAL DE PIN -->
   <div id="modal-pin" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
     <div class="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center space-y-5 border border-gray-100">
       <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mx-auto text-xl font-bold">🔑</div>
@@ -146,7 +136,6 @@
     </div>
   </div>
 
-  <!-- PANEL ADMINISTRATIVO -->
   <div id="vista-admin" class="hidden min-h-screen pb-12 bg-gray-50 w-full">
     <header class="bg-white border-b border-gray-200">
       <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
@@ -161,7 +150,6 @@
         <h2 class="text-lg font-black text-gray-900">Panel de Gestión Administrativa</h2>
       </div>
 
-      <!-- SECCIÓN PINES Y COMBOS -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-4">
           <h3 class="text-xs font-black text-gray-800 uppercase tracking-wider">🔑 Contraseñas de Acceso (PIN)</h3>
@@ -214,7 +202,6 @@
         </div>
       </div>
 
-      <!-- FORMULARIO AGREGAR/EDITAR PRODUCTO -->
       <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-4">
         <h3 class="text-xs font-black text-gray-800 uppercase tracking-wider border-b border-gray-100 pb-3">➕ Añadir / Modificar Cuenta de Streaming</h3>
         <input type="hidden" id="form-product-index" value="">
@@ -242,7 +229,6 @@
         </div>
       </div>
 
-      <!-- TABLA BASE DE DATOS -->
       <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-4">
         <h3 class="text-xs font-black text-gray-800 uppercase tracking-wider border-b border-gray-100 pb-3">📋 Catálogo Completo en Base de Datos</h3>
         <div class="overflow-x-auto">
